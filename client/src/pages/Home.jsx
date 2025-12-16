@@ -1,25 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getRandomQuestion } from "../api/questions";
 
-function Home() {
+export default function Home() {
   const [question, setQuestion] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    getRandomQuestion()
-      .then(setQuestion)
-      .catch((err) => setError(err.message));
-  }, []);
+  async function handleGetQuestion() {
+    setLoading(true);
+    setError(null);
 
-  if (error) return <p>{error}</p>;
-  if (!question) return <p>Loading...</p>;
+    try {
+      const data = await getRandomQuestion();
+      setQuestion(data);
+    } catch (err) {
+      setError("Could not load question");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div>
       <h1>Gratuity Jar</h1>
-      <p>{question.prompt}</p>
+
+      <button onClick={handleGetQuestion}>Help me out</button>
+
+      {loading && <p>Loading...</p>}
+      {error && <p>{error}</p>}
+
+      {question && <p>{question.text}</p>}
     </div>
   );
 }
-
-export default Home;
