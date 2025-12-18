@@ -4,11 +4,10 @@ import requireUser from "../middleware/requireUser.js";
 
 const router = express.Router();
 
-router.get("/", requireUser, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM gratitude_entries WHERE user_id = $1 ORDER BY created_at DESC",
-      [req.user.id]
+      "SELECT * FROM gratitude_entries ORDER BY created_at DESC"
     );
     res.json(result.rows);
   } catch (err) {
@@ -34,7 +33,7 @@ router.get("/:id", requireUser, async (req, res) => {
   }
 });
 
-router.post("/", requireUser, async (req, res) => {
+router.post("/", async (req, res) => {
   const { user_id, content, mood_tag } = req.body;
   try {
     const result = await pool.query(
@@ -46,6 +45,7 @@ router.post("/", requireUser, async (req, res) => {
     console.error(err.message);
     res.status(500).json({ error: "Failed to create entry" });
   }
+  console.log(req.body);
 });
 
 router.put("/:id", requireUser, async (req, res) => {

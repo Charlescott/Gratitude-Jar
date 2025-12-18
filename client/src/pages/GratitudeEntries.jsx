@@ -19,8 +19,8 @@ export default function GratitudeEntries() {
 
       if (!res.ok) throw new Error("Failed to add entry");
 
-      const newEnrty = await res.json();
-      setEntries([newEntry, ...entries]);
+      const newEntry = await res.json();
+      setEntries((prev) => [newEntry, ...entries]);
       setContent("");
       setMoodTag("");
     } catch (err) {
