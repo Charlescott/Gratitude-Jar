@@ -80,17 +80,21 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  align-items: center;
+
   padding: 2rem;
+  gap: 1.75rem;
   text-align: center;
 
+  position: relative; 
 }
 
 .home-logo {
   width: 260px;
-  max-width: 70vw;
+  max-width: 280px;
+  animation: fadeInUp 0.8s ease-out both;
+  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15));
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.8s ease, transform 0.8s ease;
@@ -109,23 +113,25 @@ body {
   max-width: 420px;
   font-size: 1.05rem;
   line-height: 1.6;
-  color: #64748b; /* slate-ish, calm */
+  color: #64748b;
 }
 
 .home::before {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      600px circle at top,
-      rgba(59, 130, 246, 0.12),
+
+  background: radial-gradient(
+      700px circle at 50% 35%,
+      rgba(59, 130, 246, 0.18),
       transparent 60%
     ),
     radial-gradient(
-      600px circle at bottom,
-      rgba(34, 197, 94, 0.12),
+      700px circle at 50% 65%,
+      rgba(34, 197, 94, 0.18),
       transparent 60%
     );
+
+  filter: blur(40px);
   z-index: -1;
 }
