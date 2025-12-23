@@ -23,8 +23,6 @@ export default function Home({ isAuthenticated }) {
         className={`home-logo ${visible ? "show" : ""}`}
       />
 
-      <h1>Gratuity Jar</h1>
-
       <p className="tagline">A simple place to pause and notice what’s good.</p>
 
       <button
