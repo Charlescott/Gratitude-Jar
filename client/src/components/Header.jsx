@@ -10,6 +10,8 @@ export default function Header({ token, onLogout }) {
 
   const isAuthenticated = Boolean(token);
 
+  
+
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);

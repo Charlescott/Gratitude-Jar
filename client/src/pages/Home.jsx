@@ -3,16 +3,22 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 export default function Home({ isAuthenticated }) {
-  const [visible, setVisible] = useState(false);
+  const [showLogo, setShowLogo] = useState(false);
+  const [showButton, setShowButton] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 200);
+    const logoTimer = setTimeout(() => setShowLogo(true), 200);
+    const buttonTimer = setTimeout(() => setShowButton(true), 900);
 
     if (isAuthenticated) {
       navigate("/entries");
     }
-    return () => clearTimeout(t);
+
+    return () => {
+      clearTimeout(logoTimer);
+      clearTimeout(buttonTimer);
+    };
   }, [isAuthenticated, navigate]);
 
   return (
@@ -20,16 +26,18 @@ export default function Home({ isAuthenticated }) {
       <img
         src={logo}
         alt="Gratuity Jar logo"
-        className={`home-logo ${visible ? "show" : ""}`}
+        className={`home-logo ${showLogo ? "show" : ""}`}
       />
 
-      <p className="tagline">A simple place to pause and notice what’s good.</p>
+      <p className="tagline">
+        A simple place to pause and notice what’s good.
+      </p>
 
       <button
-        className="primary"
-        onClick={() => navigate(isAuthenticated ? "/entries" : "/login")}
+        className={`primary-btn ${showButton ? "show" : ""}`}
+        onClick={() => navigate("/entries")}
       >
-        {isAuthenticated ? "Go to my entries" : "Start journaling"}
+        Start journaling
       </button>
     </div>
   );

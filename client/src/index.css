@@ -87,7 +87,7 @@ body {
   gap: 1.75rem;
   text-align: center;
 
-  position: relative; 
+  position: relative;
 }
 
 .home-logo {
@@ -96,13 +96,13 @@ body {
   animation: fadeInUp 0.8s ease-out both;
   filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15));
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transform: translateY(20px) scale(0.96);
+  transition: opacity 2.8s ease, transform 2.8s ease;
 }
 
 .home-logo.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .home-logo:hover {
@@ -134,4 +134,42 @@ body {
 
   filter: blur(40px);
   z-index: -1;
+}
+
+.primary-btn {
+  margin-top: 1rem;
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+
+  background: linear-gradient(
+    135deg,
+    #2f80ed,
+    #27ae60
+  );
+  color: white;
+
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.15);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.2);
+  opacity: 0.95;
+}
+
+.primary-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.18);
 }
