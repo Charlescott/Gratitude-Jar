@@ -1,14 +1,17 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useState } from "react";
 
+import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import Home from "./pages/Home";
 import GratitudeEntries from "./pages/GratitudeEntries";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 
+
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
+   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const isAuthenticated = Boolean(token);
 
   function handleLogin(newToken) {
@@ -21,9 +24,24 @@ function App() {
     localStorage.removeItem("token");
   }
 
+ 
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  },
+    [theme]);
+
+
+
   return (
     <Router>
-      <Header token={token} onLogout={handleLogout} />
+      <Header
+        token={token}
+        onLogout={handleLogout}
+        theme={theme}
+        setTheme={setTheme}
+      />
 
       <Routes>
         <Route path="/" element={<Home isAuthenticated={isAuthenticated} />} />

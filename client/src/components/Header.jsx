@@ -1,21 +1,12 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
-export default function Header({ token, onLogout }) {
-  const [theme, setTheme] = useState("light");
-  const navigate = useNavigate();
+export default function Header({ token, onLogout, theme, setTheme }) {
   const location = useLocation();
-
   const isHome = location.pathname === "/";
-
   const isAuthenticated = Boolean(token);
 
-  
-
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (
@@ -27,14 +18,14 @@ export default function Header({ token, onLogout }) {
         alignItems: "center",
       }}
     >
-      {/* Left side */}
+      {/* Left */}
       {!isHome && (
         <Link to="/" style={{ fontWeight: 700, textDecoration: "none" }}>
           Gratuity Jar
         </Link>
       )}
 
-      {/* Right side */}
+      {/* Right */}
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={toggleTheme} className="icon-btn">
           {theme === "light" ? "🌙" : "☀️"}

@@ -158,20 +158,7 @@ export default function GratitudeEntries({ token }) {
                   {new Date(entry.created_at).toLocaleDateString()}:
                 </strong>{" "}
                 {entry.content} {entry.mood_tag && `(${entry.mood_tag})`}
-                <button
-                  onClick={() => handleDelete(entry.id)}
-                  style={{
-                    marginLeft: "1rem",
-                    backgroundColor: "red",
-                    color: "#fff",
-                    border: "none",
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Delete
-                </button>
+                <button class="delete-btn">Delete</button>
               </li>
             ))}
           </ul>
