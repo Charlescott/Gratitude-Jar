@@ -27,10 +27,8 @@ export default function Header({ token, onLogout, theme, setTheme }) {
       )}
 
       {/* Right */}
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        <button onClick={toggleTheme} className="icon-btn">
-          {theme === "light" ? "🌙" : "☀️"}
-        </button>
+      <div style={{ display: "flex", alignItems: "center", gap: "6rem" }}>
+        
 
         {!isHome &&
           (isAuthenticated ? (
@@ -41,6 +39,10 @@ export default function Header({ token, onLogout, theme, setTheme }) {
               <Link to="/register">Register</Link>
             </>
           ))}
+
+          <button onClick={toggleTheme} className="icon-btn">
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
       </div>
     </header>
   );

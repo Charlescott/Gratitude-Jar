@@ -86,6 +86,7 @@ a:hover {
 /* Primary */
 .btn-primary {
   margin-top: 1rem;
+  font-size: 1rem;
   background: linear-gradient(135deg, #2f80ed, #27ae60);
   color: white;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
@@ -136,6 +137,12 @@ a:hover {
 /* =====================================================
    INPUTS
 ===================================================== */
+.input {
+  width: 30%;
+  height: 30%;
+  padding: 0.5rem 0.75rem;
+}
+
 input,
 textarea {
   width: 100%;
@@ -229,15 +236,30 @@ textarea:focus {
   max-width: 600px;
   margin: 2rem auto;
   width: 90%;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(8px);
+  border-radius: 24px;
+  padding: 2rem;
+}
+
+.entries-header {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
 }
 
 .entry-card {
-  background-color: var(--bg-color);
+  background-color: rgba(255, 255, 255, 0.75);
   color: var(--text-color);
-  border-radius: 16px;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 18px;
+  padding: 1.75rem 2rem;
+  border-left: 4px solid var(--accent-color);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.3s ease;
 }
 
 .entry-card:hover {
@@ -304,4 +326,12 @@ select.input {
   background-size: 0.75rem;
   padding-right: 2.5rem;
   cursor: pointer;
+}
+
+[data-theme="dark"] .entries-container {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .entry-card {
+  background: rgba(255, 255, 255, 0.08);
 }

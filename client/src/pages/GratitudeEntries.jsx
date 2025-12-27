@@ -18,7 +18,7 @@ export default function GratitudeEntries({ token }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content, mood_tag: moodTag }),
+        body: JSON.stringify({ content, mood }),
       });
 
       if (!res.ok) throw new Error("Failed to add entry");
@@ -26,7 +26,7 @@ export default function GratitudeEntries({ token }) {
       const newEntry = await res.json();
       setEntries((prev) => [{ ...newEntry, show: false }, ...prev]);
       setContent("");
-      setMoodTag("");
+      setMood("");
 
       // trigger animation in next tick
       setTimeout(() => {
@@ -87,7 +87,7 @@ export default function GratitudeEntries({ token }) {
 
   return (
     <div className="entries-container">
-      <h1>Gratuity Jar</h1>
+      <h1 className="entries-header">Gratuity Jar</h1>
 
       {/* Form section */}
       <div className="entry-card">
