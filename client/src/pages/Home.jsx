@@ -29,12 +29,14 @@ export default function Home({ isAuthenticated }) {
         className={`home-logo ${showLogo ? "show" : ""}`}
       />
 
+      <h1 className="home-title">Gratuity Jar</h1>
+
       <p className="tagline">
         A simple place to pause and notice what’s good.
       </p>
 
       <button
-        className="btn-primary"
+        className="btn btn-primary"
         onClick={() => navigate("/entries")}
       >
         Start journaling
