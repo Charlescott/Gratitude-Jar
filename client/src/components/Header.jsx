@@ -28,19 +28,23 @@ export default function Header({ token, onLogout, theme, setTheme }) {
 
       {/* Right */}
       <div style={{ display: "flex", alignItems: "center", gap: "6rem" }}>
-        
-
         {!isHome &&
           (isAuthenticated ? (
-            <button className="btn-primary" onClick={onLogout}>Logout</button>
+            <button className="btn btn-secondary" onClick={onLogout}>
+              Logout
+            </button>
           ) : (
             <>
-              <Link to="/login">Login</Link>
-              <Link to="/register">Register</Link>
+              <Link className="btn btn-secondary" to="/login">
+                Login
+              </Link>
+              <Link className="btn btn-secondary" to="/register">
+                Register
+              </Link>
             </>
           ))}
 
-          <button onClick={toggleTheme} className="icon-btn">
+        <button onClick={toggleTheme} className="icon-btn">
           {theme === "light" ? "🌙" : "☀️"}
         </button>
       </div>

@@ -26,7 +26,7 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div>
+    <div className="entry-card entries-container">
       <h1>Login</h1>
       <form onSubmit={handleSubmit}>
         <input
@@ -46,7 +46,7 @@ export default function Login({ onLogin }) {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button className="btn-secondary" type="submit">
+        <button className="btn btn-secondary" type="submit">
           Login
         </button>
       </form>

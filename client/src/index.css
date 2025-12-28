@@ -70,14 +70,21 @@ a:hover {
 ===================================================== */
 
 /* Base button */
+/* =====================================================
+   BUTTONS
+===================================================== */
+
+/* Base button */
 .btn {
-  padding: 0.65rem 1.5rem;
-  font-size: 0.95rem;
+  padding: 0.75rem 1.75rem;   /* standardized padding */
+  font-size: 1rem;            /* standardized font size */
   font-weight: 600;
   font-family: inherit;
   border-radius: 999px;
   border: none;
   cursor: pointer;
+  min-width: 140px;           /* ensures all buttons have a consistent width */
+  text-align: center;
 
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease,
     background-color 0.2s ease, color 0.2s ease;
@@ -85,12 +92,9 @@ a:hover {
 
 /* Primary */
 .btn-primary {
-  margin-top: 1rem;
-  font-size: 1rem;
   background: linear-gradient(135deg, #2f80ed, #27ae60);
   color: white;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  
 }
 
 .btn-primary:hover {
@@ -117,14 +121,14 @@ a:hover {
 }
 
 .btn-secondary:hover {
-  transform: translateY(-1.5px);
-  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.18);
-  opacity: 1;
+  transform: translateY(-1px);  /* matched primary hover transform */
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  opacity: 0.95;
 }
 
 .btn-secondary:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 /* Icon buttons */
@@ -134,6 +138,7 @@ a:hover {
   font-size: 1.25rem;
   cursor: pointer;
 }
+
 
 /* =====================================================
    INPUTS
@@ -246,7 +251,7 @@ textarea:focus {
 .entries-container {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   max-width: 600px;
   margin: 2rem auto;
   width: 90%;
@@ -267,8 +272,9 @@ textarea:focus {
   background-color: rgba(255, 255, 255, 0.75);
   color: var(--text-color);
   border-radius: 18px;
-  padding: 1.75rem 2rem;
+  padding: 3rem 2rem;
   border-left: 4px solid var(--accent-color);
+  
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 
@@ -284,6 +290,8 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  max-width: 500px;
+
 }
 
 /* Entry list items */
