@@ -1,11 +1,34 @@
 import { useEffect, useState } from "react";
+import { getRandomQuestion } from "../api/questions";
 
 export default function GratitudeEntries({ token }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [content, setContent] = useState("");
-  const [moodTag, setMoodTag] = useState("");
+  const [mood, setMood] = useState("");
+  const [prompt, setPrompt] = useState(null);
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const MOOD_MAP = {
+    happy: "😊",
+    calm: "😌",
+    neutral: "😐",
+    low: "😔",
+    stressed: "😤",
+    grateful: "🙏",
+  };
+
+  async function handleHelpMeOut() {
+    setLoadingPrompt(true);
+    try {
+      const question = await getRandomQuestion();
+      setPrompt(question.text);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPrompt(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -18,15 +41,24 @@ export default function GratitudeEntries({ token }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content, mood_tag: moodTag }),
+        body: JSON.stringify({ content, mood }),
       });
 
       if (!res.ok) throw new Error("Failed to add entry");
 
       const newEntry = await res.json();
-      setEntries((prev) => [newEntry, ...entries]);
+      setEntries((prev) => [{ ...newEntry, show: false }, ...prev]);
       setContent("");
-      setMoodTag("");
+      setMood("");
+
+      // trigger animation in next tick
+      setTimeout(() => {
+        setEntries((prev) =>
+          prev.map((entry) =>
+            entry.id === newEntry.id ? { ...entry, show: true } : entry
+          )
+        );
+      }, 50);
     } catch (err) {
       setError(err.message);
     }
@@ -62,7 +94,7 @@ export default function GratitudeEntries({ token }) {
         });
         if (!res.ok) throw new Error("Failed to fetch entries");
         const data = await res.json();
-        setEntries(data);
+        setEntries(data.map((entry) => ({ ...entry, show: true })));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -71,65 +103,47 @@ export default function GratitudeEntries({ token }) {
     }
 
     fetchEntries();
-  }, []);
+  }, [token]);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 
   return (
-    <div>
-      <h1>Gratuity Jar</h1>
+    <div className="entries-container">
+      <h1 className="entries-header">Gratuity Jar</h1>
 
       {/* Form section */}
-      <div className="main-content">
+      <div className="entry-card">
         <h2>Add a Gratitude Entry</h2>
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-            marginBottom: "2rem",
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <textarea
             id="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="What are you grateful for?"
+            placeholder={content ? "" : prompt || "Write something..."}
             required
-            style={{
-              padding: "0.75rem",
-              borderRadius: "5px",
-              border: `1px solid var(--accent-color)`,
-              backgroundColor: "var(--bg-color)",
-              color: "var(--text-color)",
-            }}
           />
-          <input
-            type="text"
-            value={moodTag}
-            onChange={(e) => setMoodTag(e.target.value)}
-            placeholder="Mood (optional)"
-            style={{
-              padding: "0.5rem",
-              borderRadius: "5px",
-              border: `1px solid var(--accent-color)`,
-              backgroundColor: "var(--bg-color)",
-              color: "var(--text-color)",
-            }}
-          />
+
+          <button type="button" className="btn-help" onClick={handleHelpMeOut}>
+            {loadingPrompt ? "Thinking…" : "Help me out"}
+          </button>
+          <select
+            className="input"
+            value={mood}
+            onChange={(e) => setMood(e.target.value)}
+          >
+            <option value="">Mood (optional)</option>
+            <option value="happy">😊 Happy</option>
+            <option value="calm">😌 Calm</option>
+            <option value="neutral">😐 Neutral</option>
+            <option value="low">😔 Low</option>
+            <option value="stressed">😤 Stressed</option>
+            <option value="grateful">🙏 Grateful</option>
+          </select>
           <button
+            className="btn btn-secondary"
             type="submit"
             disabled={!content.trim()}
-            style={{
-              backgroundColor: "var(--accent-color)",
-              color: "var(--bg-color)",
-              border: "none",
-              padding: "0.75rem 1rem",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
           >
             Add Entry
           </button>
@@ -146,29 +160,22 @@ export default function GratitudeEntries({ token }) {
             {entries.map((entry) => (
               <li
                 key={entry.id}
-                style={{
-                  marginBottom: "1rem",
-                  padding: "1rem",
-                  borderRadius: "8px",
-                  backgroundColor: "var(--bg-color)",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
-                }}
+                className={`entry-item ${entry.show ? "show" : ""}`}
               >
-                <strong>
-                  {new Date(entry.created_at).toLocaleDateString()}:
-                </strong>{" "}
-                {entry.content} {entry.mood_tag && `(${entry.mood_tag})`}
+                <div className="entry-item-content">
+                  <strong>
+                    {new Date(entry.created_at).toLocaleDateString()}:
+                  </strong>{" "}
+                  {entry.content}
+                  {entry.mood && (
+                    <span className="entry-mood">
+                      {MOOD_MAP[entry.mood] ?? "🙂"}
+                    </span>
+                  )}
+                </div>
                 <button
+                  className="delete-btn"
                   onClick={() => handleDelete(entry.id)}
-                  style={{
-                    marginLeft: "1rem",
-                    backgroundColor: "red",
-                    color: "#fff",
-                    border: "none",
-                    padding: "0.25rem 0.5rem",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
                 >
                   Delete
                 </button>

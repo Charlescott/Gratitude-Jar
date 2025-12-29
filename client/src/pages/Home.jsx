@@ -1,34 +1,46 @@
-import { useState } from "react";
-import { getRandomQuestion } from "../api/questions";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png";
 
-export default function Home() {
-  const [question, setQuestion] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+export default function Home({ isAuthenticated }) {
+  const [showLogo, setShowLogo] = useState(false);
+  const [showButton, setShowButton] = useState(false);
+  const navigate = useNavigate();
 
-  async function handleGetQuestion() {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    const logoTimer = setTimeout(() => setShowLogo(true), 200);
+    const buttonTimer = setTimeout(() => setShowButton(true), 900);
 
-    try {
-      const data = await getRandomQuestion();
-      setQuestion(data);
-    } catch (err) {
-      setError("Could not load question");
-    } finally {
-      setLoading(false);
+    if (isAuthenticated) {
+      navigate("/entries");
     }
-  }
+
+    return () => {
+      clearTimeout(logoTimer);
+      clearTimeout(buttonTimer);
+    };
+  }, [isAuthenticated, navigate]);
 
   return (
-    <div>
-    
-      <button onClick={handleGetQuestion}>Help me out</button>
+    <div className="home">
+      <img
+        src={logo}
+        alt="Gratuity Jar logo"
+        className={`home-logo ${showLogo ? "show" : ""}`}
+      />
 
-      {loading && <p>Loading...</p>}
-      {error && <p>{error}</p>}
+      <h1 className="home-title">Gratuity Jar</h1>
 
-      {question && <p>{question.text}</p>}
+      <p className="tagline">
+        A simple place to pause and notice what’s good.
+      </p>
+
+      <button
+        className="btn btn-primary"
+        onClick={() => navigate("/entries")}
+      >
+        Start journaling
+      </button>
     </div>
   );
 }

@@ -21,7 +21,16 @@ router.post("/register", async (req, res) => {
       [email, hashedPassword, name]
     );
 
-    res.status(201).json(result.rows[0]);
+    const token = jwt.sign(
+      { id: result.rows[0].id, email: result.rows[0].email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(201).json({
+      token,
+      user: result.rows[0],
+    });
   } catch (err) {
     if (err.code === "23505") {
       return res.status(409).json({ error: "Email already in use" });
@@ -41,6 +50,12 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
     if (!user) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+
+    if (!validPassword) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 

@@ -35,11 +35,11 @@ router.get("/:id", requireUser, async (req, res) => {
 });
 
 router.post("/", requireUser, async (req, res) => {
-  const { content, mood_tag } = req.body;
+  const { content, mood } = req.body;
   try {
     const result = await pool.query(
-      "INSERT INTO gratitude_entries (user_id, content, mood_tag) VALUES ($1, $2, $3) RETURNING *",
-      [req.user.id, content, mood_tag]
+      "INSERT INTO gratitude_entries (user_id, content, mood) VALUES ($1, $2, $3) RETURNING *",
+      [req.user.id, content, mood]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -51,11 +51,11 @@ router.post("/", requireUser, async (req, res) => {
 
 router.put("/:id", requireUser, async (req, res) => {
   const { id } = req.params;
-  const { content, mood_tag } = req.body;
+  const { content, mood } = req.body;
   try {
     const result = await pool.query(
-      "UPDATE gratitude_entries SET content = $1, mood_tag = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING *",
-      [content, mood_tag, id, req.user.id]
+      "UPDATE gratitude_entries SET content = $1, mood = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING *",
+      [content, mood, id, req.user.id]
     );
     if (result.rows.length === 0)
       return res.status(404).json({ error: "Entry not found" });
