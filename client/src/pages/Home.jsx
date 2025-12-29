@@ -29,7 +29,7 @@ export default function Home({ isAuthenticated }) {
         className={`home-logo ${showLogo ? "show" : ""}`}
       />
 
-      <h1 className="home-title">Gratuity Jar</h1>
+      <h1 className="home-title">Gratitude Jar</h1>
 
       <p className="tagline">
         A simple place to pause and notice what’s good.

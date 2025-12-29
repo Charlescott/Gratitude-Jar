@@ -110,7 +110,7 @@ export default function GratitudeEntries({ token }) {
 
   return (
     <div className="entries-container">
-      <h1 className="entries-header">Gratuity Jar</h1>
+      <h1 className="entries-header">Gratitude Jar</h1>
 
       {/* Form section */}
       <div className="entry-card">

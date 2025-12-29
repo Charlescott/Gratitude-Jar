@@ -1,23 +1,20 @@
-// mailer.js
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT),
-  secure: process.env.SMTP_SECURE === "true",
+  service: "gmail",
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
-export async function sendReminderEmail(email, name) {
+export async function sendReminderEmail(to, message) {
   await transporter.sendMail({
-    from: '"Gratuity Jar" <no-reply@gratuityjar.com>',
-    to: email,
-    subject: "Time to write your gratitude note!",
-    html: `<p>Hey ${name},</p>
-           <p>Take a moment to reflect and add a new gratitude entry:</p>
-           <a href="${process.env.FRONTEND_URL}/entries">Write Gratitude</a>`,
+    from: process.env.EMAIL_FROM,
+    to,
+    subject: "Your Gratitude Reminder 💛",
+    text: message,
   });
+
+  console.log(`📧 Reminder sent to ${to}`);
 }

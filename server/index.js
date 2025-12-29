@@ -5,6 +5,7 @@ import pool from "./db/index.js";
 import questionsRouter from "./routes/questions.js";
 import authRouter from "./routes/auth.js";
 import entriesRouter from "./routes/entries.js";
+import { scheduleReminders } from "./db/reminderCron.js"
 
 dotenv.config();
 
@@ -30,6 +31,8 @@ app.use("/questions", questionsRouter);
 app.use("/entries", entriesRouter);
 
 const PORT = process.env.PORT || 5000;
+
+scheduleReminders();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
