@@ -73,21 +73,21 @@ a:hover {
    BUTTONS
 ===================================================== */
 
-/* Base button */
+
 /* =====================================================
    BUTTONS
 ===================================================== */
 
 /* Base button */
 .btn {
-  padding: 0.75rem 1.75rem; /* standardized padding */
-  font-size: 1rem; /* standardized font size */
+  padding: 0.75rem 1.75rem; 
+  font-size: 1rem; 
   font-weight: 600;
   font-family: inherit;
   border-radius: 999px;
   border: none;
   cursor: pointer;
-  min-width: 140px; /* ensures all buttons have a consistent width */
+  min-width: 140px; 
   text-align: center;
 
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease,
@@ -125,7 +125,7 @@ a:hover {
 }
 
 .btn-secondary:hover {
-  transform: translateY(-1px); /* matched primary hover transform */
+  transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
   opacity: 0.95;
 }
@@ -441,7 +441,7 @@ select.input {
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.3s ease;
-  align-self: flex-start; /* keeps it aligned to the left of textarea */
+  align-self: flex-start;
 }
 
 .btn-help:hover {

@@ -29,7 +29,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
           />
         </Link>
       ) : (
-        <div /> // spacer to keep layout balanced
+        <div /> 
       )}
 
       {/* Right */}
