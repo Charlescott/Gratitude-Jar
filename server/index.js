@@ -5,8 +5,9 @@ import pool from "./db/index.js";
 import questionsRouter from "./routes/questions.js";
 import authRouter from "./routes/auth.js";
 import entriesRouter from "./routes/entries.js";
-import { scheduleReminders } from "./db/reminderCron.js"
+import { scheduleReminders } from "./db/reminderCron.js";
 import remindersRouter from "./routes/reminders.js";
+
 
 dotenv.config();
 
