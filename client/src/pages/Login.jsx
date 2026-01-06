@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { loginUser, registerUser } from "../api";
 
 export default function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,23 +16,12 @@ export default function AuthForm({ onLogin }) {
     setLoading(true);
     setError("");
 
-    const endpoint = isLogin
-      ? "http://localhost:5000/auth/login"
-      : "http://localhost:5000/auth/register";
-
-    const payload = isLogin ? { email, password } : { name, email, password };
-
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const result = isLogin
+        ? await loginUser({ email, password })
+        : await registerUser({ name, email, password });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong");
-
-      onLogin(data.token);
+      onLogin(result.token);
     } catch (err) {
       setError(err.message);
       setLoading(false);

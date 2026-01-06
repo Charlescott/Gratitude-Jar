@@ -261,7 +261,7 @@ textarea:focus {
   max-width: 420px;
   font-size: 1.15rem;
   line-height: 1.6;
-  color: var(iimuted-text);
+  color: var(--muted-text);
   margin-bottom: 0.5rem;
 }
 
