@@ -686,8 +686,8 @@ textarea:-webkit-autofill {
 }
 
 .btn {
-  opacity: 0;
-  transform: translateY(10px);
+  opacity: 1;
+  transform: translateY(1px);
 }
 
 /* Optional: keep the gradient full-page */
