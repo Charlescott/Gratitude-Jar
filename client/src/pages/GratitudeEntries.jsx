@@ -9,6 +9,7 @@ export default function GratitudeEntries({ token }) {
   const [mood, setMood] = useState("");
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+
   const MOOD_MAP = {
     happy: "😊",
     calm: "😌",
@@ -18,6 +19,7 @@ export default function GratitudeEntries({ token }) {
     grateful: "🙏",
   };
 
+  // Fetch random prompt
   async function handleHelpMeOut() {
     setLoadingPrompt(true);
     try {
@@ -30,6 +32,7 @@ export default function GratitudeEntries({ token }) {
     }
   }
 
+  // Add new entry
   async function handleSubmit(e) {
     e.preventDefault();
     if (!token) return;
@@ -43,7 +46,6 @@ export default function GratitudeEntries({ token }) {
         },
         body: JSON.stringify({ content, mood }),
       });
-
       if (!res.ok) throw new Error("Failed to add entry");
 
       const newEntry = await res.json();
@@ -64,10 +66,9 @@ export default function GratitudeEntries({ token }) {
     }
   }
 
-  // handle Delete
+  // Delete entry
   async function handleDelete(id) {
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/entries/${id}`, {
         method: "DELETE",
         headers: {
@@ -83,14 +84,12 @@ export default function GratitudeEntries({ token }) {
     }
   }
 
-  // Fetch entries from backend
+  // Fetch entries
   useEffect(() => {
     async function fetchEntries() {
       try {
         const res = await fetch("http://localhost:5000/entries", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch entries");
         const data = await res.json();
@@ -101,45 +100,52 @@ export default function GratitudeEntries({ token }) {
         setLoading(false);
       }
     }
-
     fetchEntries();
   }, [token]);
 
   if (loading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
     <div className="entries-container">
-      <h1 className="entries-header">Gratuity Jar</h1>
+      <h1 className="entries-header">Gratitude Jar</h1>
 
-      {/* Form section */}
+      {/* Form */}
       <div className="entry-card">
         <h2>Add a Gratitude Entry</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <textarea
             id="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder={content ? "" : prompt || "Write something..."}
+            placeholder={prompt || "Write something..."}
             required
           />
 
-          <button type="button" className="btn-help" onClick={handleHelpMeOut}>
-            {loadingPrompt ? "Thinking…" : "Help me out"}
-          </button>
-          <select
-            className="input"
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-          >
-            <option value="">Mood (optional)</option>
-            <option value="happy">😊 Happy</option>
-            <option value="calm">😌 Calm</option>
-            <option value="neutral">😐 Neutral</option>
-            <option value="low">😔 Low</option>
-            <option value="stressed">😤 Stressed</option>
-            <option value="grateful">🙏 Grateful</option>
-          </select>
+          <div className="form-row">
+            <select
+              className="input"
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+            >
+              <option value="">Mood (optional)</option>
+              <option value="happy">😊 Happy</option>
+              <option value="calm">😌 Calm</option>
+              <option value="neutral">😐 Neutral</option>
+              <option value="low">😔 Low</option>
+              <option value="stressed">😤 Stressed</option>
+              <option value="grateful">🙏 Grateful</option>
+            </select>
+
+            <button
+              type="button"
+              className="btn-help"
+              onClick={handleHelpMeOut}
+            >
+              {loadingPrompt ? "Thinking…" : "Help me out"}
+            </button>
+          </div>
+
           <button
             className="btn btn-secondary"
             type="submit"
@@ -150,7 +156,7 @@ export default function GratitudeEntries({ token }) {
         </form>
       </div>
 
-      {/* Entries list section */}
+      {/* Entries List */}
       <div>
         <h2>Your Entries</h2>
         {entries.length === 0 ? (
@@ -163,14 +169,10 @@ export default function GratitudeEntries({ token }) {
                 className={`entry-item ${entry.show ? "show" : ""}`}
               >
                 <div className="entry-item-content">
-                  <strong>
-                    {new Date(entry.created_at).toLocaleDateString()}:
-                  </strong>{" "}
+                  <strong>{new Date(entry.created_at).toLocaleDateString()}:</strong>{" "}
                   {entry.content}
                   {entry.mood && (
-                    <span className="entry-mood">
-                      {MOOD_MAP[entry.mood] ?? "🙂"}
-                    </span>
+                    <span className="entry-mood">{MOOD_MAP[entry.mood]}</span>
                   )}
                 </div>
                 <button

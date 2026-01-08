@@ -18,7 +18,7 @@ CREATE TABLE gratitude_entries (
 CREATE TABLE prompt_settings (
     id SERIAL PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    frequency TEXT CHECK (frequncy IN ('daily', 'weekly', 'monthly') ) DEFAULT 'daily',
+    frequency TEXT CHECK (frequency IN ('daily', 'weekly', 'monthly') ) DEFAULT 'daily',
     time_of_day TIME NOT NULL,
     is_active BOOLEAN DEFAULT true
 );
@@ -28,3 +28,16 @@ CREATE TABLE questions (
     text TEXT NOT NULL,
     category TEXT
 );
+
+CREATE TABLE user_reminders (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    frequency TEXT NOT NULL,         -- daily, weekly, monthly, custom
+    time_of_day TIME NOT NULL,       -- when to send reminder
+    last_sent TIMESTAMP,             -- track last sent reminder
+    active BOOLEAN DEFAULT TRUE      -- in case user wants to pause reminders
+);
+
+ALTER TABLE user_reminders
+ADD COLUMN timezone TEXT DEFAULT 'UTC';
+

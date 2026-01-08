@@ -7,7 +7,7 @@ const router = express.Router();
 router.get("/", requireUser, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM gratitude_entries WHERE user_id =$1 ORDER BY created_at DESC",
+      "SELECT * FROM gratitude_entries WHERE user_id = $1 ORDER BY created_at DESC",
       [req.user.id]
     );
     res.json(result.rows);
@@ -35,18 +35,23 @@ router.get("/:id", requireUser, async (req, res) => {
 });
 
 router.post("/", requireUser, async (req, res) => {
-  const { content, mood } = req.body;
+  const content = req.body.content?.trim();
+  const mood = req.body.mood?.trim();
+
+  if (!content) {
+    return res.status(400).json({ error: "Content is required" });
+  }
   try {
     const result = await pool.query(
       "INSERT INTO gratitude_entries (user_id, content, mood) VALUES ($1, $2, $3) RETURNING *",
-      [req.user.id, content, mood]
+      [req.user.id, content, mood || null]
     );
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Failed to create entry" });
   }
-  console.log(req.body);
 });
 
 router.put("/:id", requireUser, async (req, res) => {
@@ -67,7 +72,6 @@ router.put("/:id", requireUser, async (req, res) => {
 });
 
 router.delete("/:id", requireUser, async (req, res) => {
-  console.log("req.user.id:", req.user.id, "entry id:", req.params.id);
   const { id } = req.params;
   try {
     const result = await pool.query(

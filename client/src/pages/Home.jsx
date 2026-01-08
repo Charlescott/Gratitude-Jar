@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-export default function Home({ isAuthenticated }) {
+export default function Home({ isAuthenticated, theme, setTheme }) {
   const [showLogo, setShowLogo] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const navigate = useNavigate();
@@ -23,20 +23,30 @@ export default function Home({ isAuthenticated }) {
 
   return (
     <div className="home">
+      {/* Theme toggle top-right */}
+      <div className="home-theme-toggle">
+        <button
+          onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+          className="icon-btn"
+        >
+          {theme === "light" ? "🌙" : "☀️"}
+        </button>
+      </div>
+
       <img
         src={logo}
         alt="Gratuity Jar logo"
         className={`home-logo ${showLogo ? "show" : ""}`}
       />
 
-      <h1 className="home-title">Gratuity Jar</h1>
+      <h1 className="home-title">Gratitude Jar</h1>
 
-      <p className="tagline">
-        A simple place to pause and notice what’s good.
-      </p>
-
+      <p className="tagline">A simple place to pause and notice what’s good.</p>
+      <bk>
+        <bk></bk>
+      </bk>
       <button
-        className="btn btn-primary"
+        className={`btn btn-primary ${showButton ? "show" : ""}`}
         onClick={() => navigate("/entries")}
       >
         Start journaling
