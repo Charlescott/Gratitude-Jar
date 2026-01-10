@@ -40,4 +40,5 @@ CREATE TABLE user_reminders (
 
 ALTER TABLE user_reminders
 ADD COLUMN timezone TEXT DEFAULT 'UTC';
+ADD CONSTRAINT user_reminders_user_id_unique UNIQUE (user_id);
 

@@ -18,7 +18,7 @@ export async function sendReminderEmail(to, name) {
 It's time to add a gratitude entry.
 
 Visit:
-https://gratuityjar.com/entries
+https://thegratuityjar.com/
 
 — Gratitude Jar`,
     html: `
