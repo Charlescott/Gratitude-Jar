@@ -11,11 +11,12 @@ export function scheduleReminders() {
       const now = new Date();
       const hour = now.getHours();
       const minute = now.getMinutes();
+      console.log(now, hour, minute);
 
       const { rows: reminders } = await pool.query(
         `
         
-        SELECT ur.id, ur.user_id, ur.time_of_day, u.email, u.name
+        SELECT ur.id, ur.user_id, ur.time_of_day, u.email, u.name, EXTRACT(HOUR FROM ur.time_of_day) AS hour, EXTRACT(MINUTE FROM ur.time_of_day) AS minute
         FROM user_reminders ur
         JOIN users u ON u.id = ur.user_id
         WHERE ur.active = true
@@ -27,6 +28,9 @@ export function scheduleReminders() {
       );
 
       for (const reminder of reminders) {
+        console.log(
+          `Sending reminder to user ${reminder.user_id} at ${reminder.hour}:${reminder.minute}`
+        );
         await sendReminderEmail(reminder.email, reminder.name);
 
         await pool.query(
