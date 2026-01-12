@@ -6,6 +6,7 @@ export default function ReminderForm({ reminder, onSave }) {
   const [active, setActive] = useState(true);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Populate form when parent reminder changes
   useEffect(() => {
@@ -35,7 +36,12 @@ export default function ReminderForm({ reminder, onSave }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ time_of_day: time, frequency, active }),
+          body: JSON.stringify({
+            time_of_day: time,
+            frequency,
+            active,
+            timezone: userTimezone,
+          }),
         }
       );
 
