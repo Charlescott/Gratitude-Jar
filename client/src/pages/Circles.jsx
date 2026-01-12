@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import "./styles.css";
 
 export default function CirclesPage() {
   const [showContent, setShowContent] = useState(false);
@@ -50,6 +49,35 @@ export default function CirclesPage() {
           position: relative;
           overflow: hidden;
           isolation: isolate;
+        }
+
+        /* Animated gradient ring */
+        .circle-gradient-wrapper::before {
+          content: '';
+          position: absolute;
+          width: 600px;
+          height: 600px;
+          border-radius: 50%;
+          background: conic-gradient(
+            from 0deg,
+            rgba(47, 128, 237, 0.6),
+            rgba(39, 174, 96, 0.6),
+            rgba(255, 127, 80, 0.6),
+            rgba(47, 128, 237, 0.6)
+          );
+          mask: radial-gradient(circle, transparent 65%, black 66%, black 68%, transparent 69%);
+          -webkit-mask: radial-gradient(circle, transparent 65%, black 66%, black 68%, transparent 69%);
+          animation: rotateRing 12s linear infinite;
+          opacity: 0.7;
+        }
+
+        @keyframes rotateRing {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         /* Gradient circle animations */
@@ -123,11 +151,7 @@ export default function CirclesPage() {
           font-weight: 700;
           color: var(--text-color);
           margin-bottom: 1.5rem;
-          font-family: inherit;
-          background: linear-gradient(135deg, #2f80ed, #27ae60);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-family: "Segoe UI", sans-serif;
         }
 
         .circles-description {
@@ -163,14 +187,18 @@ export default function CirclesPage() {
           margin-top: 1rem;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
+          @media (max-width: 768px) {
           .circles-title {
             font-size: 2.5rem;
           }
 
           .circles-description {
             font-size: 1rem;
+          }
+
+          .circle-gradient-wrapper::before {
+            width: 400px;
+            height: 400px;
           }
 
           .circle-gradient-1 {
