@@ -28,8 +28,9 @@ export function scheduleReminders() {
 
       for (const reminder of reminders) {
         console.log(
-          `Sending reminder to user ${reminder.user_id} at ${reminder.hour}:${reminder.minute}`
+          `Checking reminder ${reminder.id} for user ${reminder.user_id} at ${reminder.time_of_day} (${reminder.timezone})`
         );
+
         const userNow = new Date(
           nowUtc.toLocaleString("en-US", {
             timeZone: reminder.timezone || "UTC",
