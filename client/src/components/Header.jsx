@@ -28,10 +28,15 @@ export default function Header({ token, onLogout, theme, setTheme }) {
   return (
     <header
       style={{
-        padding: "1rem 2rem",
+        padding: "0.75rem 1rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        background: "var(--bg-color)",
+        backdropFilter: "blur(8px)",
       }}
     >
       {/* Left */}
