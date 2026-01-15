@@ -8,7 +8,7 @@ export default function ReminderForm({ reminder, onSave }) {
   const [error, setError] = useState("");
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  // Populate form when parent reminder changes
+
   useEffect(() => {
     if (!reminder) return;
     setTime(reminder.time_of_day);
@@ -48,7 +48,7 @@ export default function ReminderForm({ reminder, onSave }) {
       if (!res.ok) throw new Error("Failed to save reminder");
 
       const updated = await res.json();
-      onSave(updated); // update parent summary
+      onSave(updated); 
       setSuccess("Reminder updated!");
     } catch (err) {
       console.error(err);
