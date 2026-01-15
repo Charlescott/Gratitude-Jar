@@ -48,9 +48,7 @@ export default function CirclesPage() {
   };
 
   const handleBack = () => {
-    setAnimate(false); // 🚫 disable growth
     setIsShrinking(true);
-    setShowWelcome(true);
 
     setTimeout(() => {
       setView("welcome");
@@ -58,9 +56,6 @@ export default function CirclesPage() {
       setCircleKey("");
       setInviteLink("");
       setIsShrinking(false);
-
-      // Re-enable animation AFTER render settles
-      requestAnimationFrame(() => setAnimate(true));
     }, 1200);
   };
 

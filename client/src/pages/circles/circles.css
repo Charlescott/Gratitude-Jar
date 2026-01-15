@@ -5,7 +5,6 @@
   justify-content: center;
   align-items: center;
   position: relative;
-  overflow: visible;
   isolation: isolate;
   margin-top: -60px;
   padding: 2rem;
@@ -47,18 +46,19 @@
   );
   animation: rotateRing 12s linear infinite;
   opacity: 0.7;
-  transition: all 0.8s ease;
 }
 
 .circle-gradient-wrapper.celebrating::before {
   width: 700px;
   height: 700px;
   opacity: 0.9;
-  animation: rotateRing 12s linear infinite, expandRing 1.2s ease forwards;
+  animation: rotateRing 12s linear infinite,
+    expandRing 1.2s ease-in-out forwards;
 }
 
 .circle-gradient-wrapper.shrinking::before {
-  animation: rotateRing 12s linear infinite, shrinkRing 1.2s ease forwards;
+  animation: rotateRing 12s linear infinite,
+    shrinkRing 1.2s ease-in-out forwards;
 }
 
 @keyframes expandRing {
@@ -98,13 +98,15 @@
 
 /* Gradient circle animations */
 .circle-gradient-wrapper {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: visible;
   z-index: -1;
-  overflow: hidden;
 }
 
 .circle-gradient-wrapper.no-animate::before {
