@@ -10,6 +10,7 @@ export default function CirclesPage() {
   const [myCircles, setMyCircles] = useState([]); // Store created circles
   const [isShrinking, setIsShrinking] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [animate, setAnimate] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
@@ -47,15 +48,20 @@ export default function CirclesPage() {
   };
 
   const handleBack = () => {
+    setAnimate(false); // 🚫 disable growth
     setIsShrinking(true);
-    setShowWelcome(true); // Start showing content immediately
+    setShowWelcome(true);
+
     setTimeout(() => {
       setView("welcome");
       setCircleName("");
       setCircleKey("");
       setInviteLink("");
       setIsShrinking(false);
-    }, 1200); // Match the shrink animation duration
+
+      // Re-enable animation AFTER render settles
+      requestAnimationFrame(() => setAnimate(true));
+    }, 1200);
   };
 
   const handleCircleClick = (circle) => {
@@ -70,9 +76,11 @@ export default function CirclesPage() {
       <div className="circles-page">
         {/* Animated gradient circle background */}
         <div
-          className={`circle-gradient-wrapper ${
-            circleKey && !isShrinking ? "celebrating" : ""
-          } ${isShrinking ? "shrinking" : ""}`}
+          className={`circle-gradient-wrapper
+    ${circleKey && animate && !isShrinking ? "celebrating" : ""}
+    ${isShrinking ? "shrinking" : ""}
+    ${!animate ? "no-animate" : ""}
+  `}
         >
           <div className="circle-gradient circle-gradient-1"></div>
           <div className="circle-gradient circle-gradient-2"></div>
@@ -92,11 +100,9 @@ export default function CirclesPage() {
 
             {myCircles.length === 0 && (
               <p className="circles-description">
-                Create intimate spaces where gratitude flows freely. Circles are
-                your private communities—invite friends, family, or colleagues
-                to share moments of appreciation together. Celebrate the good in
-                each other's lives, anonymously or openly, in a warm space built
-                for connection.
+                Circles are shared spaces for quiet gratitude. Create one for
+                people you trust, and reflect together without noise, pressure,
+                or timelines.
               </p>
             )}
 
