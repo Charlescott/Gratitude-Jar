@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import "./circles.css";
 
-export default function CirclesPage() {
+import { fetchCircles, createCircle, joinCircle } from "../../api";
+
+export default function CirclesPage({ token }) {
   const [showContent, setShowContent] = useState(false);
   const [view, setView] = useState("welcome"); // 'welcome', 'create', 'join'
   const [circleName, setCircleName] = useState("");
@@ -27,6 +29,21 @@ export default function CirclesPage() {
     }
   }, [view]);
 
+  useEffect(() => {
+    async function loadCircles() {
+      try {
+        const circles = await fetchCircles(token);
+        setMyCircles(circles);
+      } catch (err) {
+        console.error("Failed to load circles", err);
+      }
+    }
+
+    if (token) {
+      loadCircles();
+    }
+  }, [token]);
+
   const handleCreateCircle = () => {
     setView("create");
   };
@@ -35,15 +52,18 @@ export default function CirclesPage() {
     setView("join");
   };
 
-  const handleSubmitCreate = (name) => {
-    if (name.trim()) {
-      const key = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const link = `https://gratuityjar.app/circles/join/${key}`;
-      setCircleKey(key);
-      setInviteLink(link);
+  const handleSubmitCreate = async (name) => {
+    if (!name.trim()) return;
 
-      // Add to myCircles array
-      setMyCircles([...myCircles, { name, key, link }]);
+    try {
+      const circle = await createCircle(token, name);
+
+      setMyCircles((prev) => [circle, ...prev]);
+      setCircleName(circle.name);
+      setCircleKey(circle.key);
+      setInviteLink(`${window.location.origin}/circles/join/${circle.key}`);
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -327,15 +347,20 @@ export default function CirclesPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => {
-                    if (circleKey.trim()) {
-                      console.log("Joining circle with key:", circleKey);
-                      // TODO: API call to join circle
+                  onClick={async () => {
+                    try {
+                      const circle = await joinCircle(token, circleKey);
+                      setMyCircles((prev) => [circle, ...prev]);
+                      setView("welcome");
+                      setCircleKey("");
+                    } catch (err) {
+                      alert(err.message);
                     }
                   }}
                 >
                   Join Circle
                 </button>
+
                 <button
                   type="button"
                   className="btn btn-secondary"

@@ -7,15 +7,18 @@ import authRouter from "./routes/auth.js";
 import entriesRouter from "./routes/entries.js";
 import { scheduleReminders } from "./db/reminderCron.js";
 import remindersRouter from "./routes/reminders.js";
+import circlesRouter from "./routes/circles.js";
 
-
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_END === "production" ? ".env" : ".env.local",
+});
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use("/reminders", remindersRouter);
+app.use("/circles", circlesRouter);
 
 pool.query("SELECT NOW()", (err, res) => {
   if (err) {
@@ -38,4 +41,8 @@ const PORT = process.env.PORT || 5000;
 scheduleReminders();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+pool.query("SELECT current_database()", (err, res) => {
+  console.log("Connected DB:", res?.rows[0]?.current_database);
 });
