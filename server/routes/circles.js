@@ -96,7 +96,7 @@ router.post("/join", requireUser, async (req, res) => {
 });
 
 // GET /circles/:id
-router.get("/:id", authenticateToken, async (req, res) => {
+router.get("/:id", requireUser, async (req, res) => {
   const { id } = req.params;
 
   try {

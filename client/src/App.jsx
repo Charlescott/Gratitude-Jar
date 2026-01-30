@@ -13,6 +13,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import RemindersPage from "./pages/Reminders";
 import Circles from "./pages/circles/Circles";
+import CircleDetail from "./pages/circles/CircleDetail";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function AppRoutes({ token, setToken, theme, setTheme }) {
   const navigate = useNavigate();
@@ -89,6 +91,15 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         />
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
         <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/circles/:id"
+          element={
+            <ProtectedRoute token={token}>
+              <CircleDetail token={token} />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </>
   );

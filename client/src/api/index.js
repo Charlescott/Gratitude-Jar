@@ -70,3 +70,12 @@ export async function joinCircle(token, key) {
   if (!res.ok) throw new Error("Invalid circle key");
   return res.json();
 }
+
+export async function fetchCircleById(token, id) {
+  const res = await fetch(`${API}/circles/${id}`, {
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to load circle");
+  return res.json();
+}
