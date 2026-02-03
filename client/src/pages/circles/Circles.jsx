@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./circles.css";
+import { useNavigate } from "react-router-dom";
 
 import { fetchCircles, createCircle, joinCircle } from "../../api";
 
@@ -13,6 +14,7 @@ export default function CirclesPage({ token }) {
   const [isShrinking, setIsShrinking] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [animate, setAnimate] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowContent(true), 100);
@@ -80,6 +82,7 @@ export default function CirclesPage({ token }) {
   };
 
   const handleCircleClick = (circle) => {
+    navigate(`/circles/${circle.id}`);
     setCircleName(circle.name);
     setCircleKey(circle.key);
     setInviteLink(circle.link);

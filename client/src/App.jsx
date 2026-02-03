@@ -80,7 +80,7 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         />
 
         <Route
-          path="/Circles"
+          path="/circles"
           element={
             isAuthenticated ? (
               <Circles token={token} />
