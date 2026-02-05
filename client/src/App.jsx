@@ -15,6 +15,7 @@ import RemindersPage from "./pages/Reminders";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
+import CirclesLayout from "./pages/circles/CirclesLayout";
 
 function AppRoutes({ token, setToken, theme, setTheme }) {
   const navigate = useNavigate();
@@ -82,13 +83,15 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         <Route
           path="/circles"
           element={
-            isAuthenticated ? (
-              <Circles token={token} />
-            ) : (
-              <Login onLogin={handleLogin} />
-            )
+            <ProtectedRoute token={token}>
+              <CirclesLayout />
+            </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Circles token={token} />} />
+          <Route path=":id" element={<CircleDetail token={token} />} />
+        </Route>
+
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
         <Route path="/register" element={<Register />} />
 
