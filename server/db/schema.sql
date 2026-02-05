@@ -45,6 +45,13 @@ ADD COLUMN timezone TEXT DEFAULT 'UTC';
 ALTER TABLE user_reminders
 ADD CONSTRAINT user_reminders_user_id_unique UNIQUE (user_id);
 
+ALTER TABLE gratitude_entries
+ADD COLUMN circle_id INTEGER
+REFERENCES circles(id)
+ON DELETE CASCADE;
+
+
+
 CREATE TABLE circles (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,

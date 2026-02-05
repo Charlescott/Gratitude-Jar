@@ -122,5 +122,63 @@ router.get("/:id", requireUser, async (req, res) => {
     res.status(500).json({ error: "Failed to load circle" });
   }
 });
+//Create shared gratitude entry in circle
+router.post("/:id/entries", requireUser, async (req, res) => {
+  const { id } = req.params;
+  const { content, mood } = req.body;
+
+  if (!content?.trim()) {
+    return res.status(400).json({ error: "Entry content required" });
+  }
+
+  try {
+    // Check membership
+    const membership = await pool.query(
+      `
+      SELECT 1 FROM circle_memberships
+      WHERE circle_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: "Not a member of this circle" });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO gratitude_entries (user_id, content, mood, circle_id)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *`,
+      [req.user.id, content.trim(), mood || null, id],
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create entry" });
+  }
+});
+
+router.get("/:id/entries", requireUser, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      ` 
+      SELECT g.*, u.name
+      FROM gratitude_entries g
+      JOIN users u ON g.user_id = u.id
+      WHERE g.circle_id = $1
+      ORDER BY g.created_at DESC
+      `,
+      [id],
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch entries" });
+  }
+});
 
 export default router;

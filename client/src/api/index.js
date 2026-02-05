@@ -79,3 +79,23 @@ export async function fetchCircleById(token, id) {
   if (!res.ok) throw new Error("Failed to load circle");
   return res.json();
 }
+
+export async function fetchCircleEntries(token, id) {
+  const res = await fetch(`${API}/circles/${id}/entries`, {
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to load circle entries");
+  return res.json();
+}
+
+export async function createCircleEntry(token, id, content, mood) {
+  const res = await fetch(`${API}/circles/${id}/entries`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ content, mood }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create circle entry");
+  return res.json();
+}
