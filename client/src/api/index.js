@@ -80,6 +80,26 @@ export async function fetchCircleById(token, id) {
   return res.json();
 }
 
+export async function leaveCircle(token, id) {
+  const res = await fetch(`${API}/circles/${id}/leave`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to leave circle");
+  return res.json();
+}
+
+export async function deleteCircle(token, id) {
+  const res = await fetch(`${API}/circles/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to delete circle");
+  return res.json();
+}
+
 export async function fetchCircleEntries(token, id) {
   const res = await fetch(`${API}/circles/${id}/entries`, {
     headers: authHeaders(token),

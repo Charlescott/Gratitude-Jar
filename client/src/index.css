@@ -17,9 +17,10 @@
     border-radius: 20px;
   }
 
-  .entry-card textarea {
-    font-size: 0.95rem;
-  }
+.entry-card textarea {
+  font-size: 0.95rem;
+  resize: none;
+}
 
   .dropdown {
     position: static !important;

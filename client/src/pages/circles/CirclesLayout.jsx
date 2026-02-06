@@ -3,7 +3,7 @@ import "./circles.css";
 
 export default function CirclesLayout() {
   return (
-    <div className="app-container">
+    <div className="app-container circles-app">
       <div className="circles-page">
         {/* Background gradients */}
         <div className="circle-gradient-wrapper">

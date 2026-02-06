@@ -1,13 +1,25 @@
 .circles-page {
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 38px);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   position: relative;
   isolation: isolate;
-  margin-top: -60px;
-  padding: 2rem;
+  margin-top: 0;
+  padding: 0;
+  transform: translateY(-200px);
+  overflow: visible;
+  --circle-radius: 300px;
+}
+
+/* Scoped container tweaks for circles pages only */
+.circles-app {
+  padding: 0;
+  background: transparent;
+  min-height: 100vh;
+  padding-top: 38px;
+  box-sizing: border-box;
 }
 
 .circle-gradient-wrapper::before {
@@ -44,35 +56,16 @@
   transition:
     transform 1.2s ease,
     opacity 1.2s ease;
-  
 }
 
-.circle-gradient-wrapper.celebrating::before {
+body.circles-celebrating .circle-gradient-wrapper::before {
   transform: translate(-50%, -50%) scale(1.17);
   opacity: 0.9;
 }
 
-.circle-gradient-wrapper.shrinking::before {
+body.circles-shrinking .circle-gradient-wrapper::before {
   transform: translate(-50%, -50%) scale(1);
   opacity: 0.7;
-}
-
-@keyframes expandRing {
-  from {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  to {
-    transform: translate(-50%, -50%) scale(1.17);
-  }
-}
-
-@keyframes shrinkRing {
-  from {
-    transform: translate(-50%, -50%) scale(1.17);
-  }
-  to {
-    transform: translate(-50%, -50%) scale(1);
-  }
 }
 
 @keyframes rotateRing {
@@ -84,9 +77,18 @@
   }
 }
 
+@keyframes rotateRingWrapper {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
 /* Gradient circle animations */
 .circle-gradient-wrapper {
-  position: fixed;
+  position: absolute;
   top: 50%;
   left: 50%;
   width: 0;
@@ -94,10 +96,10 @@
   transform: translate(-50%, -50%);
   z-index: -1;
   pointer-events: none;
-  animation: rotateRing 12s linear infinite;
+  animation: rotateRingWrapper 12s linear infinite;
 }
 
-.circle-gradient-wrapper.no-animate::before {
+body.circles-no-animate .circle-gradient-wrapper::before {
   animation: rotateRing 12s linear infinite !important;
 }
 
@@ -116,6 +118,7 @@
     rgba(47, 128, 237, 0.25),
     transparent 70%
   );
+  animation: circleGlow 6s ease-in-out infinite;
   animation-delay: 0s;
 }
 
@@ -123,7 +126,8 @@
   width: 400px;
   height: 400px;
   background: radial-gradient(circle, rgba(39, 174, 96, 0.2), transparent 70%);
-  animation-delay: 2.6s;
+  animation: circleGlow 6s ease-in-out infinite;
+  animation-delay: 2s;
 }
 
 .circle-gradient-3 {
@@ -134,18 +138,19 @@
     rgba(255, 127, 80, 0.15),
     transparent 70%
   );
-  animation-delay: 5.2s;
+  animation: circleGlow 6s ease-in-out infinite;
+  animation-delay: 4s;
 }
 
 @keyframes circleGlow {
   0%,
   100% {
     opacity: 0;
-    transform: scale(0.8);
+    transform: translate(-50%, -50%) scale(0.8);
   }
   50% {
     opacity: 1;
-    transform: scale(1.1);
+    transform: translate(-50%, -50%) scale(1.1);
   }
 }
 
@@ -155,6 +160,10 @@
   width: 100%;
   text-align: center;
   padding: 2rem;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  backdrop-filter: none;
   opacity: 0;
   transform: translateY(30px);
   transition:
@@ -404,6 +413,10 @@ textarea:focus {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .circles-page {
+    --circle-radius: 200px;
+  }
+
   .circles-title {
     font-size: 2.5rem;
   }
@@ -437,16 +450,66 @@ textarea:focus {
   text-align: center;
   max-width: 600px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-@keyframes pulseCircle {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.15);
-    opacity: 1;
-  }
+.circle-detail h1 {
+  margin-bottom: 0.5rem;
+}
+
+.circle-detail h2 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.circle-actions {
+  margin-top: 1rem;
+}
+
+.circle-actions textarea {
+  resize: none;
+  background-color: rgba(255, 255, 255, 0.35);
+  width: min(520px, 90%);
+  margin: 0 auto;
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.circle-actions .btn {
+  margin-top: 1.25rem;
+}
+
+[data-theme="dark"] .circle-actions textarea {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.circle-member-actions {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + var(--circle-radius) + 12px);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.circle-danger-link {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: rgba(239, 68, 68, 0.75);
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.circle-danger-link:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.circle-danger-link:active {
+  transform: translateY(1px);
 }
