@@ -32,6 +32,9 @@ app.get("/", (req, res) => {
   res.send("Gratuity Jar Server is running");
 });
 
+console.log("DB HOST:", process.env.DB_HOST);
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
+
 app.use("/auth", authRouter);
 app.use("/questions", questionsRouter);
 app.use("/entries", entriesRouter);

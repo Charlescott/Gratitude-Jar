@@ -16,14 +16,32 @@ import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CirclesLayout from "./pages/circles/CirclesLayout";
+import JoinCircleLanding from "./pages/circles/JoinCircleLanding";
+import { joinCircle } from "./api";
 
 function AppRoutes({ token, setToken, theme, setTheme }) {
   const navigate = useNavigate();
   const isAuthenticated = Boolean(token);
 
-  function handleLogin(newToken) {
+  async function handleLogin(newToken) {
     setToken(newToken);
     localStorage.setItem("token", newToken);
+    const pendingKey = localStorage.getItem("pending_circle_key");
+
+    if (pendingKey) {
+      try {
+        const circle = await joinCircle(newToken, pendingKey);
+        localStorage.removeItem("pending_circle_key");
+        localStorage.setItem("show_explore_prompt", "true");
+        navigate(`/circles/${circle.id}`);
+        return;
+      } catch (err) {
+        localStorage.removeItem("pending_circle_key");
+        navigate("/circles");
+        return;
+      }
+    }
+
     navigate("/entries");
   }
 
@@ -90,6 +108,10 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         >
           <Route index element={<Circles token={token} />} />
           <Route path=":id" element={<CircleDetail token={token} />} />
+        </Route>
+
+        <Route path="/circles/join/:key" element={<CirclesLayout />}>
+          <Route index element={<JoinCircleLanding token={token} />} />
         </Route>
 
         <Route path="/login" element={<Login onLogin={handleLogin} />} />

@@ -9,6 +9,7 @@ export default function CirclesPage({ token }) {
   const [view, setView] = useState("welcome"); // 'welcome', 'create', 'join'
   const [circleName, setCircleName] = useState("");
   const [circleKey, setCircleKey] = useState("");
+  const [circleId, setCircleId] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
   const [myCircles, setMyCircles] = useState([]); // Store created circles
   const [isShrinking, setIsShrinking] = useState(false);
@@ -93,6 +94,7 @@ export default function CirclesPage({ token }) {
       setMyCircles((prev) => [circle, ...prev]);
       setCircleName(circle.name);
       setCircleKey(circle.key);
+      setCircleId(circle.id);
       setInviteLink(`${window.location.origin}/circles/join/${circle.key}`);
     } catch (err) {
       alert(err.message);
@@ -106,6 +108,7 @@ export default function CirclesPage({ token }) {
       setView("welcome");
       setCircleName("");
       setCircleKey("");
+      setCircleId(null);
       setInviteLink("");
       setIsShrinking(false);
     }, 1200);
@@ -115,6 +118,7 @@ export default function CirclesPage({ token }) {
     navigate(`/circles/${circle.id}`);
     setCircleName(circle.name);
     setCircleKey(circle.key);
+    setCircleId(circle.id);
     setInviteLink(circle.link);
     setView("create");
   };
@@ -250,7 +254,14 @@ export default function CirclesPage({ token }) {
                 Welcome home! Your Circle is ready.
               </p>
 
-              <button className="btn btn-primary share-gratitude-btn">
+              <button
+                className="btn btn-primary share-gratitude-btn"
+                onClick={() => {
+                  if (circleId) {
+                    navigate(`/circles/${circleId}`);
+                  }
+                }}
+              >
                 Share Gratitude
               </button>
 

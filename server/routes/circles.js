@@ -50,7 +50,8 @@ router.get("/", requireUser, async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT c.*
+      SELECT c.*,
+             (c.owner_id = $1) AS is_owner
       FROM circles c
       JOIN circle_memberships m ON m.circle_id = c.id
       WHERE m.user_id = $1
@@ -102,7 +103,7 @@ router.get("/:id", requireUser, async (req, res) => {
   try {
     const circleResult = await pool.query(
       `
-      SELECT c.id, c.name, c.owner_id,
+      SELECT c.id, c.name, c.owner_id, c.key,
              COUNT(cm.user_id) AS member_count
       FROM circles c
       LEFT JOIN circle_memberships cm ON c.id = cm.circle_id
@@ -116,10 +117,79 @@ router.get("/:id", requireUser, async (req, res) => {
       return res.status(404).json({ error: "Circle not found" });
     }
 
-    res.json(circleResult.rows[0]);
+    const circle = circleResult.rows[0];
+    const isOwner = circle.owner_id === req.user.id;
+
+    res.json({
+      ...circle,
+      is_owner: isOwner,
+      invite_key: isOwner ? circle.key : null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to load circle" });
+  }
+});
+
+// Leave a circle (non-owner only)
+router.delete("/:id/leave", requireUser, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const circleResult = await pool.query(
+      "SELECT owner_id FROM circles WHERE id = $1",
+      [id],
+    );
+
+    if (circleResult.rows.length === 0) {
+      return res.status(404).json({ error: "Circle not found" });
+    }
+
+    if (circleResult.rows[0].owner_id === req.user.id) {
+      return res.status(403).json({ error: "Owners must delete the circle" });
+    }
+
+    const result = await pool.query(
+      `DELETE FROM circle_memberships
+       WHERE circle_id = $1 AND user_id = $2
+       RETURNING id`,
+      [id, req.user.id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: "Not a member of this circle" });
+    }
+
+    res.json({ message: "Left circle" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to leave circle" });
+  }
+});
+
+// Delete a circle (owner only)
+router.delete("/:id", requireUser, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const circleResult = await pool.query(
+      "SELECT owner_id FROM circles WHERE id = $1",
+      [id],
+    );
+
+    if (circleResult.rows.length === 0) {
+      return res.status(404).json({ error: "Circle not found" });
+    }
+
+    if (circleResult.rows[0].owner_id !== req.user.id) {
+      return res.status(403).json({ error: "Only the owner can delete" });
+    }
+
+    await pool.query("DELETE FROM circles WHERE id = $1", [id]);
+    res.json({ message: "Circle deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete circle" });
   }
 });
 //Create shared gratitude entry in circle
