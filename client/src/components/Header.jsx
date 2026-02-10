@@ -5,6 +5,7 @@ import logo from "../assets/logo.png";
 export default function Header({ token, onLogout, theme, setTheme }) {
   const location = useLocation();
   const isHome = location.pathname === "/";
+  const isCircles = location.pathname.startsWith("/circles");
   const isAuthenticated = Boolean(token);
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -35,8 +36,8 @@ export default function Header({ token, onLogout, theme, setTheme }) {
         position: "sticky",
         top: 0,
         zIndex: 100,
-        background: "var(--bg-color)",
-        backdropFilter: "blur(8px)",
+        background: isCircles ? "transparent" : "var(--bg-color)",
+        backdropFilter: isCircles ? "none" : "blur(8px)",
       }}
     >
       {/* Left */}

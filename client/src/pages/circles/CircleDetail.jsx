@@ -8,6 +8,7 @@ import {
   leaveCircle,
   deleteCircle,
 } from "../../api";
+import { getRandomQuestion } from "../../api/questions";
 
 export default function CircleDetail({ token }) {
   const { id } = useParams();
@@ -16,6 +17,8 @@ export default function CircleDetail({ token }) {
   const [error, setError] = useState("");
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState("");
+  const [prompt, setPrompt] = useState(null);
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
   const [entryPositions, setEntryPositions] = useState({});
 
@@ -27,14 +30,9 @@ export default function CircleDetail({ token }) {
   }, [id, token]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      document.body.classList.remove("circles-celebrating");
-    }, 1200);
-
     document.body.classList.add("circles-celebrating");
 
     return () => {
-      clearTimeout(timeout);
       document.body.classList.remove("circles-celebrating");
     };
   }, [id]);
@@ -51,17 +49,52 @@ export default function CircleDetail({ token }) {
     if (entries.length === 0) return;
 
     const radius = window.innerWidth <= 768 ? 150 : 220;
+    const minDistance = window.innerWidth <= 768 ? 90 : 120;
+    const maxAttempts = 200;
 
     setEntryPositions((prev) => {
       const next = { ...prev };
+      const existing = Object.values(next);
+
+      function isFarEnough(x, y) {
+        for (const pos of existing) {
+          const dx = x - pos.x;
+          const dy = y - pos.y;
+          if (Math.hypot(dx, dy) < minDistance) {
+            return false;
+          }
+        }
+        return true;
+      }
+
       for (const entry of entries) {
         if (next[entry.id]) continue;
-        const angle = Math.random() * Math.PI * 2;
-        const distance = Math.sqrt(Math.random()) * radius;
-        const x = Math.cos(angle) * distance;
-        const y = Math.sin(angle) * distance;
-        const rotate = (Math.random() * 6 - 3).toFixed(1);
-        next[entry.id] = { x, y, rotate };
+        let placed = false;
+        let attempt = 0;
+        let best = null;
+
+        while (!placed && attempt < maxAttempts) {
+          const angle = Math.random() * Math.PI * 2;
+          const distance = Math.sqrt(Math.random()) * radius;
+          const x = Math.cos(angle) * distance;
+          const y = Math.sin(angle) * distance;
+          if (isFarEnough(x, y)) {
+            const rotate = (Math.random() * 6 - 3).toFixed(1);
+            next[entry.id] = { x, y, rotate };
+            existing.push(next[entry.id]);
+            placed = true;
+          } else if (!best || Math.hypot(x, y) > Math.hypot(best.x, best.y)) {
+            best = { x, y };
+          }
+          attempt += 1;
+        }
+
+        if (!placed) {
+          const fallback = best || { x: 0, y: 0 };
+          const rotate = (Math.random() * 6 - 3).toFixed(1);
+          next[entry.id] = { x: fallback.x, y: fallback.y, rotate };
+          existing.push(next[entry.id]);
+        }
       }
       return next;
     });
@@ -76,6 +109,18 @@ export default function CircleDetail({ token }) {
     const entry = await createCircleEntry(token, id, newEntry);
     setEntries((prev) => [entry, ...prev]);
     setNewEntry("");
+  }
+
+  async function handleHelpMeOut() {
+    setLoadingPrompt(true);
+    try {
+      const question = await getRandomQuestion();
+      setPrompt(question.text);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPrompt(false);
+    }
   }
 
   async function handleLeave() {
@@ -107,7 +152,7 @@ export default function CircleDetail({ token }) {
   }
 
   return (
-    <div className="circle-detail">
+    <div className={`circle-detail ${entries.length ? "has-entries" : "no-entries"}`}>
       {/* Header */}
       <section className="circle-header">
         <h1>{circle.name}</h1>
@@ -205,8 +250,18 @@ export default function CircleDetail({ token }) {
         <textarea
           value={newEntry}
           onChange={(e) => setNewEntry(e.target.value)}
-          placeholder="Share something you're grateful for..."
+          placeholder={prompt || "Share something you're grateful for..."}
         />
+
+        <div className="circle-actions-help">
+          <button
+            type="button"
+            className="btn-help"
+            onClick={handleHelpMeOut}
+          >
+            {loadingPrompt ? "Thinking…" : "Help me out"}
+          </button>
+        </div>
 
         <button className="btn btn-primary" onClick={handlePost}>
           Share Gratitude

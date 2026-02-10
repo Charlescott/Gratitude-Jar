@@ -64,8 +64,12 @@ body.circles-celebrating .circle-gradient-wrapper::before {
   opacity: 0.9;
 }
 
-body.circles-celebrating .circle-gradient-wrapper {
-  top: calc(50% + var(--header-offset) + 24px);
+body.circles-celebrating .circle-gradient-1,
+body.circles-celebrating .circle-gradient-2,
+body.circles-celebrating .circle-gradient-3 {
+  animation: none;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 body.circles-shrinking .circle-gradient-wrapper::before {
@@ -393,7 +397,8 @@ textarea:focus {
 }
 
 .circle-bubble:active {
-  transform: translateY(0) scale(1);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 .circle-bubble-name {
@@ -458,11 +463,19 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  padding-top: calc(var(--header-offset) + 16px);
 }
 
 .circle-header {
   position: relative;
-  z-index: 2;
+  z-index: 3;
+  overflow: visible;
+}
+
+.circle-gratitude {
+  position: relative;
+  z-index: 1;
+  margin-top: 1.5rem;
 }
 .circle-detail h1 {
   margin-bottom: 0.5rem;
@@ -518,11 +531,21 @@ textarea:focus {
 }
 
 .circle-invite-btn {
-  margin-top: 0.5rem;
+  display: inline-flex;
+  margin: 0 auto;
+  transform: translateY(40px);
+  position: relative;
+  z-index: 4;
+  visibility: visible;
+  opacity: 1;
+}
+
+.circle-detail.has-entries .circle-invite-btn {
+  transform: translateY(60px);
 }
 
 .circle-actions {
-  margin-top: 1rem;
+  margin-top: 2.5rem;
 }
 
 .circle-actions textarea {
@@ -532,12 +555,20 @@ textarea:focus {
   margin: 0 auto;
   display: block;
   margin-top: 0.5rem;
-  transform: translateY(30px);
+  transform: translateY(80px);
 }
 
 .circle-actions .btn {
   margin-top: 1.25rem;
-  transform: translateY(30px);
+  transform: translateY(80px);
+}
+
+.circle-actions-help {
+  display: flex;
+  justify-content: flex-end;
+  width: min(520px, 90%);
+  margin: 1.25rem auto 0;
+  transform: translateY(80px);
 }
 
 [data-theme="dark"] .circle-actions textarea {
@@ -547,7 +578,7 @@ textarea:focus {
 .circle-member-actions {
   position: fixed;
   left: 50%;
-  top: calc(50% + var(--header-offset) + var(--circle-radius) + 170px);
+  top: calc(50% + var(--header-offset) + var(--circle-radius) + 230px);
   transform: translateX(-50%);
   z-index: 2;
 }
