@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchCircleById,
@@ -21,6 +21,7 @@ export default function CircleDetail({ token }) {
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
   const [entryPositions, setEntryPositions] = useState({});
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => {
     fetchCircleById(token, id)
@@ -31,9 +32,11 @@ export default function CircleDetail({ token }) {
 
   useEffect(() => {
     document.body.classList.add("circles-celebrating");
+    document.body.classList.add("circle-detail-view");
 
     return () => {
       document.body.classList.remove("circles-celebrating");
+      document.body.classList.remove("circle-detail-view");
     };
   }, [id]);
 
@@ -45,15 +48,24 @@ export default function CircleDetail({ token }) {
     }
   }, []);
 
+  const visibleEntries = useMemo(() => entries.slice(0, 10), [entries]);
+  const archivedEntries = useMemo(() => entries.slice(10), [entries]);
+
   useEffect(() => {
-    if (entries.length === 0) return;
+    if (visibleEntries.length === 0) return;
 
     const radius = window.innerWidth <= 768 ? 150 : 220;
     const minDistance = window.innerWidth <= 768 ? 90 : 120;
     const maxAttempts = 200;
 
     setEntryPositions((prev) => {
-      const next = { ...prev };
+      const visibleIds = new Set(visibleEntries.map((entry) => entry.id));
+      const next = {};
+      for (const [id, pos] of Object.entries(prev)) {
+        if (visibleIds.has(Number(id))) {
+          next[id] = pos;
+        }
+      }
       const existing = Object.values(next);
 
       function isFarEnough(x, y) {
@@ -67,7 +79,7 @@ export default function CircleDetail({ token }) {
         return true;
       }
 
-      for (const entry of entries) {
+      for (const entry of visibleEntries) {
         if (next[entry.id]) continue;
         let placed = false;
         let attempt = 0;
@@ -98,7 +110,7 @@ export default function CircleDetail({ token }) {
       }
       return next;
     });
-  }, [entries]);
+  }, [visibleEntries]);
 
   if (error) return <p>{error}</p>;
   if (!circle) return <p>Loading…</p>;
@@ -173,28 +185,15 @@ export default function CircleDetail({ token }) {
         )}
       </section>
 
-      {/* Membership actions */}
-      <section className="circle-member-actions">
-        {circle.is_owner ? (
-          <button className="circle-danger-link" onClick={handleDelete}>
-            Delete Circle
-          </button>
-        ) : (
-          <button className="circle-danger-link" onClick={handleLeave}>
-            Leave Circle
-          </button>
-        )}
-      </section>
-
       {/* Shared Gratitude (empty for now) */}
       <section className="circle-gratitude">
-        {entries.length === 0 ? (
+        {visibleEntries.length === 0 ? (
           <p className="muted">
             Nothing has been shared yet. Be the first to start the ripple.
           </p>
         ) : (
           <div className="entries-list">
-            {entries.map((e) => (
+            {visibleEntries.map((e) => (
               <div
                 key={e.id}
                 className="circle-entry-card"
@@ -253,7 +252,11 @@ export default function CircleDetail({ token }) {
           placeholder={prompt || "Share something you're grateful for..."}
         />
 
-        <div className="circle-actions-help">
+        <div className="circle-actions-row">
+          <button className="btn btn-primary" onClick={handlePost}>
+            Share Gratitude
+          </button>
+
           <button
             type="button"
             className="btn-help"
@@ -263,9 +266,45 @@ export default function CircleDetail({ token }) {
           </button>
         </div>
 
-        <button className="btn btn-primary" onClick={handlePost}>
-          Share Gratitude
-        </button>
+        {archivedEntries.length > 0 && (
+          <div className="circle-archive">
+            <button
+              type="button"
+              className="circle-archive-toggle"
+              onClick={() => setShowArchive((prev) => !prev)}
+            >
+              {showArchive
+                ? "Hide older entries"
+                : `View older entries (${archivedEntries.length})`}
+            </button>
+
+            {showArchive && (
+              <div className="circle-archive-list">
+                {archivedEntries.map((entry) => (
+                  <div key={entry.id} className="circle-archive-item">
+                    <p>{entry.content}</p>
+                    <small className="circle-entry-author">
+                      <span className="circle-entry-dash">–</span> {entry.name}
+                    </small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Membership actions */}
+      <section className="circle-member-actions">
+        {circle.is_owner ? (
+          <button className="circle-danger-link" onClick={handleDelete}>
+            Delete Circle
+          </button>
+        ) : (
+          <button className="circle-danger-link" onClick={handleLeave}>
+            Leave Circle
+          </button>
+        )}
       </section>
     </div>
   );

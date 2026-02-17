@@ -2,16 +2,16 @@
   min-height: calc(100vh - 38px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   position: relative;
   isolation: isolate;
   margin-top: 0;
   padding: 0;
-  transform: translateY(-200px);
+  transform: none;
   overflow: visible;
   --circle-radius: 300px;
-  --header-offset: 38px;
+  --header-offset: 0px;
 }
 
 /* Scoped container tweaks for circles pages only */
@@ -19,7 +19,7 @@
   padding: 0;
   background: transparent;
   min-height: 100vh;
-  padding-top: 38px;
+  padding-top: 0;
   box-sizing: border-box;
 }
 
@@ -98,11 +98,11 @@ body.circles-shrinking .circle-gradient-wrapper::before {
 /* Gradient circle animations */
 .circle-gradient-wrapper {
   position: absolute;
-  top: calc(50% + var(--header-offset));
+  top: calc(50vh + var(--header-offset));
   left: 50%;
   width: 0;
   height: 0;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) !important;
   z-index: -1;
   pointer-events: none;
   animation: rotateRingWrapper 12s linear infinite;
@@ -458,24 +458,92 @@ textarea:focus {
 
 .circle-detail {
   text-align: center;
-  max-width: 600px;
+  width: min(640px, 94vw);
+  max-width: 640px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding-top: calc(var(--header-offset) + 16px);
+  display: grid;
+  grid-auto-rows: min-content;
+  row-gap: 1.25rem;
+  justify-items: center;
+  padding-top: 0;
 }
 
 .circle-header {
   position: relative;
   z-index: 3;
   overflow: visible;
+  width: 100%;
+  transform: translateY(-24px);
 }
 
 .circle-gratitude {
   position: relative;
   z-index: 1;
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.circle-archive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.circle-archive-toggle {
+  background: linear-gradient(
+    135deg,
+    rgba(47, 128, 237, 0.2),
+    rgba(39, 174, 96, 0.2)
+  );
+  color: var(--text-color);
+  border: 1px solid rgba(47, 128, 237, 0.35);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.circle-archive-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  border-color: rgba(47, 128, 237, 0.6);
+}
+
+.circle-archive-toggle:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.circle-archive-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .circle-archive-list {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.circle-archive-item {
+  text-align: left;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.circle-archive-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 .circle-detail h1 {
   margin-bottom: 0.5rem;
@@ -532,43 +600,46 @@ textarea:focus {
 
 .circle-invite-btn {
   display: inline-flex;
-  margin: 0 auto;
-  transform: translateY(40px);
+  margin: 0.25rem auto 0;
   position: relative;
   z-index: 4;
   visibility: visible;
   opacity: 1;
 }
 
-.circle-detail.has-entries .circle-invite-btn {
-  transform: translateY(60px);
-}
-
 .circle-actions {
-  margin-top: 2.5rem;
+  margin-top: 5.25rem;
+  width: 100%;
+  display: grid;
+  row-gap: 0.9rem;
+  justify-items: center;
 }
 
 .circle-actions textarea {
   resize: none;
   background-color: rgba(255, 255, 255, 0.35);
-  width: min(520px, 90%);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   display: block;
-  margin-top: 0.5rem;
-  transform: translateY(80px);
 }
 
-.circle-actions .btn {
-  margin-top: 1.25rem;
-  transform: translateY(80px);
+.circle-actions-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.circle-actions-help {
-  display: flex;
-  justify-content: flex-end;
-  width: min(520px, 90%);
-  margin: 1.25rem auto 0;
-  transform: translateY(80px);
+.circle-actions-row .btn-primary {
+  grid-column: 2;
+  justify-self: center;
+  margin: 0;
+}
+
+.circle-actions-row .btn-help {
+  grid-column: 3;
+  justify-self: end;
 }
 
 [data-theme="dark"] .circle-actions textarea {
@@ -576,11 +647,32 @@ textarea:focus {
 }
 
 .circle-member-actions {
-  position: fixed;
-  left: 50%;
-  top: calc(50% + var(--header-offset) + var(--circle-radius) + 230px);
-  transform: translateX(-50%);
-  z-index: 2;
+  position: static;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+  width: 100%;
+}
+
+body.circle-detail-view .circles-page {
+  justify-content: flex-start;
+  transform: none !important;
+}
+
+body.circle-detail-view .circle-gradient-wrapper {
+  position: absolute !important;
+  top: calc(50vh + var(--header-offset)) !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  will-change: transform;
+}
+
+@media (max-width: 768px) {
+  .circle-detail {
+    width: min(96vw, 600px);
+  }
 }
 
 .circle-explore {

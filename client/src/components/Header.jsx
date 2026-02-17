@@ -29,7 +29,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
   return (
     <header
       style={{
-        padding: "0.75rem 1rem",
+        padding: isCircles ? "0.25rem 1rem" : "0.75rem 1rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -43,7 +43,11 @@ export default function Header({ token, onLogout, theme, setTheme }) {
       {/* Left */}
       {!isHome ? (
         <Link to="/">
-          <img src={logo} alt="Gratuity Jar logo" style={{ height: "80px" }} />
+          <img
+            src={logo}
+            alt="Gratuity Jar logo"
+            style={{ height: isCircles ? "56px" : "80px" }}
+          />
         </Link>
       ) : (
         <div /> // spacer
