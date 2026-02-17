@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { joinCircle, registerUser } from "../api";
 
-export default function Register() {
+export default function Register({ onLogin }) {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,19 +14,31 @@ export default function Register() {
     setMessage("");
 
     try {
-      const res = await fetch("https://gratuity-jar-api.onrender.com/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
+      const result = await registerUser({ name, email, password });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Registration failed");
+      if (onLogin) {
+        onLogin(result.token);
+        return;
+      }
 
-      setMessage("Registration successful! You can now log in.");
-      setName("");
-      setEmail("");
-      setPassword("");
+      localStorage.setItem("token", result.token);
+
+      const pendingKey = localStorage.getItem("pending_circle_key");
+      if (pendingKey) {
+        try {
+          const circle = await joinCircle(result.token, pendingKey);
+          localStorage.removeItem("pending_circle_key");
+          localStorage.setItem("show_explore_prompt", "true");
+          navigate(`/circles/${circle.id}`);
+          return;
+        } catch (err) {
+          localStorage.removeItem("pending_circle_key");
+          navigate("/circles");
+          return;
+        }
+      }
+
+      navigate("/entries");
     } catch (err) {
       setMessage(err.message);
     }

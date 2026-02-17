@@ -61,8 +61,8 @@ export default function CircleDetail({ token }) {
   useEffect(() => {
     if (visibleEntries.length === 0) return;
 
-    const radius = window.innerWidth <= 768 ? 150 : 220;
-    const minDistance = window.innerWidth <= 768 ? 90 : 120;
+    const radius = window.innerWidth <= 768 ? 150 : 240;
+    const basePadding = window.innerWidth <= 768 ? 10 : 14;
     const maxAttempts = 200;
 
     setEntryPositions((prev) => {
@@ -75,11 +75,21 @@ export default function CircleDetail({ token }) {
       }
       const existing = Object.values(next);
 
-      function isFarEnough(x, y) {
+      function estimateRadius(entry) {
+        const contentLength = (entry.content || "").length;
+        const nameLength = (entry.name || "").length;
+        const score = contentLength + nameLength * 0.6;
+        const min = window.innerWidth <= 768 ? 42 : 50;
+        const max = window.innerWidth <= 768 ? 78 : 92;
+        return Math.max(min, Math.min(max, 34 + score * 0.35));
+      }
+
+      function isFarEnough(x, y, candidateRadius) {
         for (const pos of existing) {
           const dx = x - pos.x;
           const dy = y - pos.y;
-          if (Math.hypot(dx, dy) < minDistance) {
+          const required = (pos.radius || 52) + candidateRadius + basePadding;
+          if (Math.hypot(dx, dy) < required) {
             return false;
           }
         }
@@ -88,6 +98,7 @@ export default function CircleDetail({ token }) {
 
       for (const entry of visibleEntries) {
         if (next[entry.id]) continue;
+        const candidateRadius = estimateRadius(entry);
         let placed = false;
         let attempt = 0;
         let best = null;
@@ -97,9 +108,9 @@ export default function CircleDetail({ token }) {
           const distance = Math.sqrt(Math.random()) * radius;
           const x = Math.cos(angle) * distance;
           const y = Math.sin(angle) * distance;
-          if (isFarEnough(x, y)) {
+          if (isFarEnough(x, y, candidateRadius)) {
             const rotate = (Math.random() * 6 - 3).toFixed(1);
-            next[entry.id] = { x, y, rotate };
+            next[entry.id] = { x, y, rotate, radius: candidateRadius };
             existing.push(next[entry.id]);
             placed = true;
           } else if (!best || Math.hypot(x, y) > Math.hypot(best.x, best.y)) {
@@ -111,7 +122,12 @@ export default function CircleDetail({ token }) {
         if (!placed) {
           const fallback = best || { x: 0, y: 0 };
           const rotate = (Math.random() * 6 - 3).toFixed(1);
-          next[entry.id] = { x: fallback.x, y: fallback.y, rotate };
+          next[entry.id] = {
+            x: fallback.x,
+            y: fallback.y,
+            rotate,
+            radius: candidateRadius,
+          };
           existing.push(next[entry.id]);
         }
       }
