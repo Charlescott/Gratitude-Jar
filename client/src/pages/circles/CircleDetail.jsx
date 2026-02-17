@@ -25,6 +25,12 @@ export default function CircleDetail({ token }) {
   const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => {
+    // Prevent stale content from previous circle while new route data loads.
+    setCircle(null);
+    setEntries([]);
+    setEntryPositions({});
+    setError("");
+
     fetchCircleById(token, id)
       .then(setCircle)
       .catch((err) => setError(err.message));
