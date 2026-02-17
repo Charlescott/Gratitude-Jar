@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -21,6 +22,7 @@ import { joinCircle } from "./api";
 
 function AppRoutes({ token, setToken, theme, setTheme }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = Boolean(token);
 
   async function handleLogin(newToken) {
@@ -51,8 +53,15 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
     navigate("/");
   }
 
+  useEffect(() => {
+    const joinKey = new URLSearchParams(location.search).get("join");
+    if (joinKey && location.pathname === "/") {
+      navigate(`/circles/join/${joinKey}`, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
+
   // get current path to conditionally render Header
-  const currentPath = window.location.pathname;
+  const currentPath = location.pathname;
   const showHeader = currentPath !== "/";
 
   return (

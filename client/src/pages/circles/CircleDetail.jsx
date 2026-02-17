@@ -194,7 +194,7 @@ export default function CircleDetail({ token }) {
           <button
             className="btn-help circle-invite-btn"
             onClick={() => {
-              const link = `${window.location.origin}/circles/join/${circle.invite_key}`;
+              const link = `${window.location.origin}/?join=${circle.invite_key}`;
               navigator.clipboard.writeText(link);
               alert("Invite link copied to clipboard!");
             }}

@@ -95,7 +95,7 @@ export default function CirclesPage({ token }) {
       setCircleName(circle.name);
       setCircleKey(circle.key);
       setCircleId(circle.id);
-      setInviteLink(`${window.location.origin}/circles/join/${circle.key}`);
+      setInviteLink(`${window.location.origin}/?join=${circle.key}`);
     } catch (err) {
       alert(err.message);
     }
