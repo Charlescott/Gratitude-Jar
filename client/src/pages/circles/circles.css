@@ -2,7 +2,7 @@
   min-height: calc(100vh - 38px);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   position: relative;
   isolation: isolate;
@@ -576,6 +576,23 @@ textarea:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   text-align: center;
   color: var(--text-color);
+}
+
+.circle-entry-delete {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: rgba(239, 68, 68, 0.8);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+}
+
+.circle-entry-delete:hover {
+  color: #ef4444;
 }
 
 [data-theme="dark"] .circle-entry-card {

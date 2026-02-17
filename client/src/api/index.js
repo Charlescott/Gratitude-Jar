@@ -119,3 +119,13 @@ export async function createCircleEntry(token, id, content, mood) {
   if (!res.ok) throw new Error("Failed to create circle entry");
   return res.json();
 }
+
+export async function deleteCircleEntry(token, circleId, entryId) {
+  const res = await fetch(`${API}/circles/${circleId}/entries/${entryId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to delete circle entry");
+  return res.json();
+}

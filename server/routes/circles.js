@@ -233,21 +233,69 @@ router.get("/:id/entries", requireUser, async (req, res) => {
   const { id } = req.params;
 
   try {
+    const membership = await pool.query(
+      `
+      SELECT 1 FROM circle_memberships
+      WHERE circle_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: "Not a member of this circle" });
+    }
+
     const result = await pool.query(
       ` 
-      SELECT g.*, u.name
+      SELECT g.*, u.name, (g.user_id = $2) AS is_mine
       FROM gratitude_entries g
       JOIN users u ON g.user_id = u.id
       WHERE g.circle_id = $1
       ORDER BY g.created_at DESC
       `,
-      [id],
+      [id, req.user.id],
     );
 
     res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch entries" });
+  }
+});
+
+router.delete("/:id/entries/:entryId", requireUser, async (req, res) => {
+  const { id, entryId } = req.params;
+
+  try {
+    const membership = await pool.query(
+      `
+      SELECT 1 FROM circle_memberships
+      WHERE circle_id = $1 AND user_id = $2`,
+      [id, req.user.id],
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: "Not a member of this circle" });
+    }
+
+    const result = await pool.query(
+      `
+      DELETE FROM gratitude_entries
+      WHERE id = $1 AND circle_id = $2 AND user_id = $3
+      RETURNING id
+      `,
+      [entryId, id, req.user.id],
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ error: "You can only delete your own entries" });
+    }
+
+    res.json({ message: "Entry deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete entry" });
   }
 });
 

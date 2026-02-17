@@ -5,6 +5,7 @@ import {
   fetchCircleById,
   fetchCircleEntries,
   createCircleEntry,
+  deleteCircleEntry,
   leaveCircle,
   deleteCircle,
 } from "../../api";
@@ -123,6 +124,18 @@ export default function CircleDetail({ token }) {
     setNewEntry("");
   }
 
+  async function handleDeleteEntry(entryId) {
+    const ok = window.confirm("Delete this entry?");
+    if (!ok) return;
+
+    try {
+      await deleteCircleEntry(token, id, entryId);
+      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   async function handleHelpMeOut() {
     setLoadingPrompt(true);
     try {
@@ -205,6 +218,17 @@ export default function CircleDetail({ token }) {
                   }deg)`,
                 }}
               >
+                {e.is_mine && (
+                  <button
+                    type="button"
+                    className="circle-entry-delete"
+                    onClick={() => handleDeleteEntry(e.id)}
+                    aria-label="Delete entry"
+                    title="Delete entry"
+                  >
+                    ×
+                  </button>
+                )}
                 <p>{e.content}</p>
                 <small className="circle-entry-author">
                   <span className="circle-entry-dash">–</span> {e.name}
