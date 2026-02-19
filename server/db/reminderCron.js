@@ -63,7 +63,9 @@ export function scheduleReminders() {
             `Time matches for user ${reminder.user_id}. Sending email...`
           );
 
-          await sendReminderEmail(reminder.email, reminder.name);
+          await sendReminderEmail(reminder.email, reminder.name, {
+            userId: reminder.user_id,
+          });
 
           await pool.query(
             "UPDATE user_reminders SET last_sent = NOW() WHERE id = $1",
