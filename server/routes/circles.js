@@ -1,11 +1,27 @@
 import express from "express";
 import pool from "../db/index.js";
 import requireUser from "../middleware/requireUser.js";
+import {
+  sendCircleEntryNotificationEmail,
+  sendCircleJoinNotificationEmail,
+} from "./mailer.js";
 
 const router = express.Router();
 
 function generateKey() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+async function notifyCircleMembers(rows, senderFn, contextLabel) {
+  const results = await Promise.allSettled(
+    rows.map((member) => senderFn(member))
+  );
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error(`${contextLabel} email failed:`, result.reason);
+    }
+  }
 }
 
 router.post("/", requireUser, async (req, res) => {
@@ -82,12 +98,44 @@ router.post("/join", requireUser, async (req, res) => {
 
     const circle = circleResult.rows[0];
 
-    await pool.query(
+    const joinResult = await pool.query(
       `INSERT INTO circle_memberships (circle_id, user_id)
        VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT DO NOTHING
+       RETURNING user_id`,
       [circle.id, req.user.id],
     );
+
+    if (joinResult.rows.length > 0) {
+      const [joinerResult, memberRecipientsResult] = await Promise.all([
+        pool.query("SELECT name FROM users WHERE id = $1", [req.user.id]),
+        pool.query(
+          `
+          SELECT u.email, u.name
+          FROM circle_memberships cm
+          JOIN users u ON u.id = cm.user_id
+          WHERE cm.circle_id = $1
+            AND cm.user_id <> $2
+            AND u.email IS NOT NULL
+          `,
+          [circle.id, req.user.id]
+        ),
+      ]);
+
+      const joinerName = joinerResult.rows[0]?.name || "A new member";
+
+      await notifyCircleMembers(
+        memberRecipientsResult.rows,
+        ({ email, name }) =>
+          sendCircleJoinNotificationEmail(email, {
+            recipientName: name,
+            circleName: circle.name,
+            circleId: circle.id,
+            joinerName,
+          }),
+        "Circle join notification"
+      );
+    }
 
     res.json(circle);
   } catch (err) {
@@ -214,15 +262,48 @@ router.post("/:id/entries", requireUser, async (req, res) => {
       return res.status(403).json({ error: "Not a member of this circle" });
     }
 
-    const result = await pool.query(
-      `
+    const [result, authorResult, circleResult, memberRecipientsResult] =
+      await Promise.all([
+        pool.query(
+          `
       INSERT INTO gratitude_entries (user_id, content, mood, circle_id, is_anonymous)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *`,
-      [req.user.id, content.trim(), mood || null, id, Boolean(is_anonymous)],
+          [req.user.id, content.trim(), mood || null, id, Boolean(is_anonymous)]
+        ),
+        pool.query("SELECT name FROM users WHERE id = $1", [req.user.id]),
+        pool.query("SELECT name FROM circles WHERE id = $1", [id]),
+        pool.query(
+          `
+          SELECT u.email, u.name
+          FROM circle_memberships cm
+          JOIN users u ON u.id = cm.user_id
+          WHERE cm.circle_id = $1
+            AND cm.user_id <> $2
+            AND u.email IS NOT NULL
+          `,
+          [id, req.user.id]
+        ),
+      ]);
+
+    const entry = result.rows[0];
+    const authorName = authorResult.rows[0]?.name || "A member";
+    const circleName = circleResult.rows[0]?.name || "your circle";
+
+    await notifyCircleMembers(
+      memberRecipientsResult.rows,
+      ({ email, name }) =>
+        sendCircleEntryNotificationEmail(email, {
+          recipientName: name,
+          circleName,
+          circleId: id,
+          actorName: authorName,
+          isAnonymous: entry.is_anonymous,
+        }),
+      "Circle entry notification"
     );
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(entry);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create entry" });

@@ -149,6 +149,57 @@ async function sendWithResend({
   }
 }
 
+async function sendAppEmail({
+  to,
+  from,
+  supportAddress,
+  subject,
+  text,
+  html,
+  entityRefId,
+  messageId,
+}) {
+  if (process.env.RESEND_API_KEY) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject,
+        text,
+        html,
+        headers: {
+          "X-Entity-Ref-ID": entityRefId,
+          "Message-ID": messageId,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Resend send failed: ${response.status} ${body}`);
+    }
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject,
+    text,
+    html,
+    headers: {
+      "X-Entity-Ref-ID": entityRefId,
+    },
+    messageId,
+  });
+}
+
 export async function sendReminderEmail(to, name, options = {}) {
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
   const supportAddress = process.env.EMAIL_SUPPORT || from;
@@ -218,4 +269,115 @@ export async function sendReminderEmail(to, name, options = {}) {
   });
 
   console.log(`📧 Reminder sent to ${to}`);
+}
+
+export async function sendCircleEntryNotificationEmail(
+  to,
+  { recipientName, circleName, circleId, actorName, isAnonymous }
+) {
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const appBaseUrl = (process.env.APP_URL || "https://gratuity-jar.vercel.app")
+    .replace(/\/$/, "");
+  const circleUrl = `${appBaseUrl}/circles/${circleId}`;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+  const appDomain = getDomainFromUrl(appBaseUrl);
+  if (fromDomain && appDomain && fromDomain !== appDomain) {
+    console.warn(
+      `Email domain alignment warning: from domain "${fromDomain}" differs from app domain "${appDomain}".`
+    );
+  }
+
+  const actorLabel = isAnonymous ? "Someone in your circle" : actorName;
+  const subject = `${circleName}: new gratitude shared`;
+  const text = `Hi ${recipientName || "there"},
+
+${actorLabel} shared a new gratitude entry in ${circleName}.
+
+Open the circle:
+${circleUrl}
+`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hi ${recipientName || "there"},</p>
+      <p>${actorLabel} shared a new gratitude entry in <strong>${circleName}</strong>.</p>
+      <p>
+        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">Open circle</a>
+      </p>
+    </div>
+  `;
+
+  const entityRefId = `circle-entry-${circleId}-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  await sendAppEmail({
+    to,
+    from,
+    supportAddress,
+    subject,
+    text,
+    html,
+    entityRefId,
+    messageId,
+  });
+}
+
+export async function sendCircleJoinNotificationEmail(
+  to,
+  { recipientName, circleName, circleId, joinerName }
+) {
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const appBaseUrl = (process.env.APP_URL || "https://gratuity-jar.vercel.app")
+    .replace(/\/$/, "");
+  const circleUrl = `${appBaseUrl}/circles/${circleId}`;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+  const appDomain = getDomainFromUrl(appBaseUrl);
+  if (fromDomain && appDomain && fromDomain !== appDomain) {
+    console.warn(
+      `Email domain alignment warning: from domain "${fromDomain}" differs from app domain "${appDomain}".`
+    );
+  }
+
+  const subject = `${circleName}: a new member joined`;
+  const text = `Hi ${recipientName || "there"},
+
+${joinerName} joined ${circleName}.
+
+Open the circle:
+${circleUrl}
+`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hi ${recipientName || "there"},</p>
+      <p><strong>${joinerName}</strong> joined <strong>${circleName}</strong>.</p>
+      <p>
+        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">Open circle</a>
+      </p>
+    </div>
+  `;
+
+  const entityRefId = `circle-join-${circleId}-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  await sendAppEmail({
+    to,
+    from,
+    supportAddress,
+    subject,
+    text,
+    html,
+    entityRefId,
+    messageId,
+  });
 }
