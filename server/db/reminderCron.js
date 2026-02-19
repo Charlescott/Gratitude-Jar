@@ -1,5 +1,6 @@
 // cron/reminders.js
 import cron from "node-cron";
+import { DateTime } from "luxon";
 import pool from "../db/index.js";
 import { sendReminderEmail } from "../routes/mailer.js";
 
@@ -8,7 +9,7 @@ export function scheduleReminders() {
     console.log("Running cron job...");
 
     try {
-      const nowUtc = new Date();
+      const nowUtc = DateTime.utc();
 
       const { rows: reminders } = await pool.query(
         `
@@ -31,23 +32,27 @@ export function scheduleReminders() {
           `Checking reminder ${reminder.id} for user ${reminder.user_id} at ${reminder.time_of_day} (${reminder.timezone})`
         );
 
-        const userNow = new Date(
-          nowUtc.toLocaleString("en-US", {
-            timeZone: reminder.timezone || "UTC",
-          })
-        );
+        const zone = reminder.timezone || "UTC";
+        const userNow = nowUtc.setZone(zone);
+        if (!userNow.isValid) {
+          console.warn(
+            `Invalid timezone "${zone}" for user ${reminder.user_id}; skipping reminder ${reminder.id}`
+          );
+          continue;
+        }
 
         const [reminderHour, reminderMinute] = reminder.time_of_day
           .split(":")
           .map(Number);
 
-        const hour = userNow.getHours();
-        const minute = userNow.getMinutes();
+        const hour = userNow.hour;
+        const minute = userNow.minute;
 
-        const alreadySentToday =
-          reminder.last_sent &&
-          new Date(reminder.last_sent).toDateString() ===
-            userNow.toDateString();
+        const alreadySentToday = reminder.last_sent
+          ? DateTime.fromJSDate(new Date(reminder.last_sent))
+              .setZone(zone)
+              .hasSame(userNow, "day")
+          : false;
 
         if (
           hour === reminderHour &&

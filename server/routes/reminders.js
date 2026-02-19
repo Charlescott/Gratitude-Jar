@@ -7,17 +7,21 @@ const router = express.Router();
 
 // Create or update reminder
 router.post("/", requireUser, async (req, res) => {
-  const { frequency, time_of_day, active } = req.body;
+  const { frequency, time_of_day, active, timezone } = req.body;
   const userId = req.user.id;
 
   try {
     const result = await pool.query(
-      `INSERT INTO user_reminders (user_id, frequency, time_of_day, active)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO user_reminders (user_id, frequency, time_of_day, active, timezone)
+       VALUES ($1, $2, $3, $4, COALESCE(NULLIF($5, ''), 'UTC'))
        ON CONFLICT (user_id) 
-       DO UPDATE SET frequency = $2, time_of_day = $3, active = $4
+       DO UPDATE SET 
+         frequency = $2,
+         time_of_day = $3,
+         active = $4,
+         timezone = COALESCE(NULLIF($5, ''), user_reminders.timezone, 'UTC')
        RETURNING *`,
-      [userId, frequency, time_of_day, active]
+      [userId, frequency, time_of_day, active, timezone || null]
     );
 
     res.json(result.rows[0]);

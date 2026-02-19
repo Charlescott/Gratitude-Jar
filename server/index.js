@@ -10,7 +10,7 @@ import remindersRouter from "./routes/reminders.js";
 import circlesRouter from "./routes/circles.js";
 
 dotenv.config({
-  path: process.env.NODE_END === "production" ? ".env" : ".env.local",
+  path: process.env.NODE_ENV === "production" ? ".env" : ".env.local",
 });
 
 const app = express();
