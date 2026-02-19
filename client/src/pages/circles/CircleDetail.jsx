@@ -18,6 +18,7 @@ export default function CircleDetail({ token }) {
   const [error, setError] = useState("");
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState("");
+  const [postAnonymously, setPostAnonymously] = useState(false);
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
@@ -141,9 +142,16 @@ export default function CircleDetail({ token }) {
   async function handlePost() {
     if (!newEntry.trim()) return;
 
-    const entry = await createCircleEntry(token, id, newEntry);
+    const entry = await createCircleEntry(
+      token,
+      id,
+      newEntry,
+      undefined,
+      postAnonymously
+    );
     setEntries((prev) => [entry, ...prev]);
     setNewEntry("");
+    setPostAnonymously(false);
   }
 
   async function handleDeleteEntry(entryId) {
@@ -311,6 +319,15 @@ export default function CircleDetail({ token }) {
             {loadingPrompt ? "Thinking…" : "Help me out"}
           </button>
         </div>
+
+        <label className="checkbox-label circle-anon-toggle">
+          <input
+            type="checkbox"
+            checked={postAnonymously}
+            onChange={(e) => setPostAnonymously(e.target.checked)}
+          />
+          Post anonymously in this circle
+        </label>
 
         {archivedEntries.length > 0 && (
           <div className="circle-archive">

@@ -55,7 +55,7 @@ function createUnsubscribeToken({ userId, email }) {
 
 function buildReminderMessage(name, appBaseUrl, logoUrl, unsubscribeUrl) {
   const baseUrl = appBaseUrl.replace(/\/$/, "");
-  const entriesUrl = `${baseUrl}/entries`;
+  const entriesUrl = baseUrl;
 
   return {
     subject: "Gratitude reminder",
@@ -86,9 +86,11 @@ ${unsubscribeUrl}
               border-radius:999px;
               text-align:center;
               font-weight:600;
-              color:#ffffff;
-              background:linear-gradient(135deg, #2f80ed, #27ae60);
-              text-decoration:none;
+              color:#ffffff !important;
+              background:#2f80ed;
+              background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+              text-decoration:none !important;
+              border:1px solid #2f80ed;
               box-shadow:0 8px 20px rgba(0,0,0,0.15);
             "
           >
@@ -96,7 +98,12 @@ ${unsubscribeUrl}
           </a>
         </p>
         <p style="font-size: 12px; color: #64748b;">
-          If you no longer want reminders, <a href="${unsubscribeUrl}">unsubscribe</a>.
+          If the button does not display, use this link:
+          <a href="${entriesUrl}" style="color:#2f80ed; text-decoration:underline;">${entriesUrl}</a>
+        </p>
+        <p style="font-size: 12px; color: #64748b;">
+          If you no longer want reminders,
+          <a href="${unsubscribeUrl}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
         </p>
       </div>
     `,

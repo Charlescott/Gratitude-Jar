@@ -195,7 +195,7 @@ router.delete("/:id", requireUser, async (req, res) => {
 //Create shared gratitude entry in circle
 router.post("/:id/entries", requireUser, async (req, res) => {
   const { id } = req.params;
-  const { content, mood } = req.body;
+  const { content, mood, is_anonymous } = req.body;
 
   if (!content?.trim()) {
     return res.status(400).json({ error: "Entry content required" });
@@ -216,10 +216,10 @@ router.post("/:id/entries", requireUser, async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO gratitude_entries (user_id, content, mood, circle_id)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO gratitude_entries (user_id, content, mood, circle_id, is_anonymous)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *`,
-      [req.user.id, content.trim(), mood || null, id],
+      [req.user.id, content.trim(), mood || null, id, Boolean(is_anonymous)],
     );
 
     res.status(201).json(result.rows[0]);
@@ -246,7 +246,10 @@ router.get("/:id/entries", requireUser, async (req, res) => {
 
     const result = await pool.query(
       ` 
-      SELECT g.*, u.name, (g.user_id = $2) AS is_mine
+      SELECT
+        g.*,
+        CASE WHEN g.is_anonymous THEN 'Anonymous' ELSE u.name END AS name,
+        (g.user_id = $2) AS is_mine
       FROM gratitude_entries g
       JOIN users u ON g.user_id = u.id
       WHERE g.circle_id = $1

@@ -109,11 +109,17 @@ export async function fetchCircleEntries(token, id) {
   return res.json();
 }
 
-export async function createCircleEntry(token, id, content, mood) {
+export async function createCircleEntry(
+  token,
+  id,
+  content,
+  mood,
+  isAnonymous = false
+) {
   const res = await fetch(`${API}/circles/${id}/entries`, {
     method: "POST",
     headers: authHeaders(token),
-    body: JSON.stringify({ content, mood }),
+    body: JSON.stringify({ content, mood, is_anonymous: isAnonymous }),
   });
 
   if (!res.ok) throw new Error("Failed to create circle entry");

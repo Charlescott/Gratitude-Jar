@@ -50,6 +50,9 @@ ADD COLUMN circle_id INTEGER
 REFERENCES circles(id)
 ON DELETE CASCADE;
 
+ALTER TABLE gratitude_entries
+ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE;
+
 
 
 CREATE TABLE circles (
