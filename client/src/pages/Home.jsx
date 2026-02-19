@@ -42,9 +42,6 @@ export default function Home({ isAuthenticated, theme, setTheme }) {
       <h1 className="home-title">Gratitude Jar</h1>
 
       <p className="tagline">A simple place to pause and notice what’s good.</p>
-      <bk>
-        <bk></bk>
-      </bk>
       <button
         className={`btn btn-primary ${showButton ? "show" : ""}`}
         onClick={() => navigate("/entries")}

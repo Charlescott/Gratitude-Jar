@@ -179,6 +179,44 @@ router.get("/:id", requireUser, async (req, res) => {
   }
 });
 
+router.get("/:id/members", requireUser, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const membership = await pool.query(
+      `
+      SELECT 1 FROM circle_memberships
+      WHERE circle_id = $1 AND user_id = $2
+      `,
+      [id, req.user.id]
+    );
+
+    if (membership.rows.length === 0) {
+      return res.status(403).json({ error: "Not a member of this circle" });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.name,
+        (c.owner_id = u.id) AS is_owner
+      FROM circle_memberships cm
+      JOIN users u ON u.id = cm.user_id
+      JOIN circles c ON c.id = cm.circle_id
+      WHERE cm.circle_id = $1
+      ORDER BY (c.owner_id = u.id) DESC, u.name ASC
+      `,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch circle members" });
+  }
+});
+
 // Leave a circle (non-owner only)
 router.delete("/:id/leave", requireUser, async (req, res) => {
   const { id } = req.params;
@@ -262,15 +300,32 @@ router.post("/:id/entries", requireUser, async (req, res) => {
       return res.status(403).json({ error: "Not a member of this circle" });
     }
 
-    const [result, authorResult, circleResult, memberRecipientsResult] =
+    let entry;
+    try {
+      const result = await pool.query(
+        `
+        INSERT INTO gratitude_entries (user_id, content, mood, circle_id, is_anonymous)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *`,
+        [req.user.id, content.trim(), mood || null, id, Boolean(is_anonymous)]
+      );
+      entry = result.rows[0];
+    } catch (insertErr) {
+      // Local DBs that haven't added is_anonymous yet should still be able to post.
+      if (insertErr?.code !== "42703") throw insertErr;
+
+      const fallbackResult = await pool.query(
+        `
+        INSERT INTO gratitude_entries (user_id, content, mood, circle_id)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [req.user.id, content.trim(), mood || null, id]
+      );
+      entry = { ...fallbackResult.rows[0], is_anonymous: false };
+    }
+
+    const [authorResult, circleResult, memberRecipientsResult] =
       await Promise.all([
-        pool.query(
-          `
-      INSERT INTO gratitude_entries (user_id, content, mood, circle_id, is_anonymous)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *`,
-          [req.user.id, content.trim(), mood || null, id, Boolean(is_anonymous)]
-        ),
         pool.query("SELECT name FROM users WHERE id = $1", [req.user.id]),
         pool.query("SELECT name FROM circles WHERE id = $1", [id]),
         pool.query(
@@ -286,7 +341,6 @@ router.post("/:id/entries", requireUser, async (req, res) => {
         ),
       ]);
 
-    const entry = result.rows[0];
     const authorName = authorResult.rows[0]?.name || "A member";
     const circleName = circleResult.rows[0]?.name || "your circle";
 
@@ -325,19 +379,39 @@ router.get("/:id/entries", requireUser, async (req, res) => {
       return res.status(403).json({ error: "Not a member of this circle" });
     }
 
-    const result = await pool.query(
-      ` 
-      SELECT
-        g.*,
-        CASE WHEN g.is_anonymous THEN 'Anonymous' ELSE u.name END AS name,
-        (g.user_id = $2) AS is_mine
-      FROM gratitude_entries g
-      JOIN users u ON g.user_id = u.id
-      WHERE g.circle_id = $1
-      ORDER BY g.created_at DESC
-      `,
-      [id, req.user.id],
-    );
+    let result;
+    try {
+      result = await pool.query(
+        ` 
+        SELECT
+          g.*,
+          CASE WHEN g.is_anonymous THEN 'Anonymous' ELSE u.name END AS name,
+          (g.user_id = $2) AS is_mine
+        FROM gratitude_entries g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.circle_id = $1
+        ORDER BY g.created_at DESC
+        `,
+        [id, req.user.id]
+      );
+    } catch (queryErr) {
+      // Local DBs without is_anonymous should still return entries.
+      if (queryErr?.code !== "42703") throw queryErr;
+      result = await pool.query(
+        ` 
+        SELECT
+          g.*,
+          u.name,
+          FALSE AS is_anonymous,
+          (g.user_id = $2) AS is_mine
+        FROM gratitude_entries g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.circle_id = $1
+        ORDER BY g.created_at DESC
+        `,
+        [id, req.user.id]
+      );
+    }
 
     res.json(result.rows);
   } catch (err) {

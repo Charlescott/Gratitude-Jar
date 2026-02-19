@@ -9,6 +9,9 @@ export default function Header({ token, onLogout, theme, setTheme }) {
   const isAuthenticated = Boolean(token);
 
   const [profileOpen, setProfileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
   const dropdownRef = useRef(null);
 
   const toggleTheme = () => {
@@ -26,10 +29,24 @@ export default function Header({ token, onLogout, theme, setTheme }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth <= 768);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <header
       style={{
-        padding: isCircles ? "0.25rem 1rem" : "0.75rem 1rem",
+        padding: isCircles
+          ? isMobile
+            ? "0.2rem 0.65rem"
+            : "0.25rem 1rem"
+          : isMobile
+          ? "0.5rem 0.75rem"
+          : "0.75rem 1rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -46,7 +63,15 @@ export default function Header({ token, onLogout, theme, setTheme }) {
           <img
             src={logo}
             alt="Gratuity Jar logo"
-            style={{ height: isCircles ? "56px" : "80px" }}
+            style={{
+              height: isCircles
+                ? isMobile
+                  ? "44px"
+                  : "56px"
+                : isMobile
+                ? "58px"
+                : "80px",
+            }}
           />
         </Link>
       ) : (
@@ -58,7 +83,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "1.5rem",
+          gap: isMobile ? "0.75rem" : "1.5rem",
           position: "relative",
         }}
       >

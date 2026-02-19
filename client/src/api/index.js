@@ -80,6 +80,15 @@ export async function fetchCircleById(token, id) {
   return res.json();
 }
 
+export async function fetchCircleMembers(token, id) {
+  const res = await fetch(`${API}/circles/${id}/members`, {
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to load circle members");
+  return res.json();
+}
+
 export async function leaveCircle(token, id) {
   const res = await fetch(`${API}/circles/${id}/leave`, {
     method: "DELETE",

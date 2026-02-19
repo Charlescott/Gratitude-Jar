@@ -787,3 +787,124 @@ textarea:-webkit-autofill {
   overflow: hidden;
   isolation: isolate;
 }
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 0.9rem;
+  }
+
+  .main-content {
+    max-width: 100%;
+  }
+
+  .entries-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0.8rem auto;
+    padding: 1.1rem 0.95rem;
+    border-radius: 18px;
+  }
+
+  .entry-card {
+    padding: 1.1rem 0.95rem;
+    border-radius: 14px;
+  }
+
+  .entries-header {
+    font-size: 1.45rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .entry-card h1,
+  .entry-card h2,
+  .entry-card h3 {
+    font-size: 1.15rem;
+    margin-top: 0;
+  }
+
+  .entry-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .entry-item-content {
+    max-width: 100%;
+    font-size: 0.95rem;
+  }
+
+  .delete-btn {
+    align-self: flex-end;
+  }
+
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+  }
+
+  .input,
+  .form-row input[type="time"],
+  .form-row select {
+    width: 100%;
+  }
+
+  .btn {
+    min-width: 0;
+  }
+
+  .entry-card form .btn.btn-secondary,
+  .entry-card form .btn.btn-primary {
+    width: 100%;
+  }
+
+  .home {
+    padding: 1.25rem 0.9rem;
+    gap: 1rem;
+  }
+
+  .home-theme-toggle {
+    top: 1rem;
+    right: 0.75rem;
+  }
+
+  .home-logo {
+    width: min(290px, 80vw);
+    max-width: 80vw;
+  }
+
+  .home-title {
+    font-size: 1.8rem;
+  }
+
+  .tagline {
+    font-size: 1rem;
+    max-width: 92vw;
+  }
+
+  .reminders-page {
+    width: 100%;
+  }
+
+  .reminders-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem 0.9rem;
+    border-radius: 16px;
+  }
+
+  .reminder-form {
+    gap: 1rem;
+  }
+
+  .reminder-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+    padding-bottom: 0;
+  }
+
+  .checkbox-label {
+    margin-left: 0;
+  }
+}

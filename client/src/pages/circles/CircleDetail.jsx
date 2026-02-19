@@ -1,8 +1,9 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchCircleById,
+  fetchCircleMembers,
   fetchCircleEntries,
   createCircleEntry,
   deleteCircleEntry,
@@ -24,6 +25,9 @@ export default function CircleDetail({ token }) {
   const [showExplore, setShowExplore] = useState(false);
   const [entryPositions, setEntryPositions] = useState({});
   const [showArchive, setShowArchive] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const membersDropdownRef = useRef(null);
 
   useEffect(() => {
     // Prevent stale content from previous circle while new route data loads.
@@ -36,6 +40,7 @@ export default function CircleDetail({ token }) {
       .then(setCircle)
       .catch((err) => setError(err.message));
     fetchCircleEntries(token, id).then(setEntries);
+    fetchCircleMembers(token, id).then(setMembers).catch(() => setMembers([]));
   }, [id, token]);
 
   useEffect(() => {
@@ -54,6 +59,20 @@ export default function CircleDetail({ token }) {
       setShowExplore(true);
       localStorage.removeItem("show_explore_prompt");
     }
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (
+        membersDropdownRef.current &&
+        !membersDropdownRef.current.contains(e.target)
+      ) {
+        setMembersOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const visibleEntries = useMemo(() => entries.slice(0, 10), [entries]);
@@ -211,9 +230,32 @@ export default function CircleDetail({ token }) {
       {/* Header */}
       <section className="circle-header">
         <h1>{circle.name}</h1>
-        <p>
-          {circle.member_count} member{circle.member_count !== 1 ? "s" : ""}
-        </p>
+        <div className="circle-members-dropdown" ref={membersDropdownRef}>
+          <button
+            type="button"
+            className="circle-members-toggle"
+            onClick={() => setMembersOpen((prev) => !prev)}
+            aria-expanded={membersOpen}
+            aria-haspopup="true"
+          >
+            {circle.member_count} member{circle.member_count !== 1 ? "s" : ""} ▾
+          </button>
+
+          <div className={`circle-members-menu ${membersOpen ? "open" : ""}`}>
+            {members.length === 0 ? (
+              <p className="circle-members-empty">No members found.</p>
+            ) : (
+              <ul className="circle-members-list">
+                {members.map((member) => (
+                  <li key={member.id} className="circle-member-item">
+                    {member.name || "Unnamed member"}
+                    {member.is_owner ? " (Owner)" : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
         {circle.is_owner && circle.invite_key && (
           <button
             className="btn-help circle-invite-btn"
