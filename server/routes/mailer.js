@@ -39,7 +39,7 @@ function makeMessageId(entityRefId, fromDomain) {
 
 function createUnsubscribeToken({ userId, email }) {
   if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is required to create unsubscribe tokens.");
+    return null;
   }
 
   return jwt.sign(
@@ -56,6 +56,7 @@ function createUnsubscribeToken({ userId, email }) {
 function buildReminderMessage(name, appBaseUrl, logoUrl, unsubscribeUrl) {
   const baseUrl = appBaseUrl.replace(/\/$/, "");
   const entriesUrl = baseUrl;
+  const unsubscribeCopy = unsubscribeUrl || `${baseUrl}/reminders`;
 
   return {
     subject: "Gratitude reminder",
@@ -67,7 +68,7 @@ Open your journal:
 ${entriesUrl}
 
 Unsubscribe:
-${unsubscribeUrl}
+${unsubscribeCopy}
 `,
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
@@ -103,7 +104,7 @@ ${unsubscribeUrl}
         </p>
         <p style="font-size: 12px; color: #64748b;">
           If you no longer want reminders,
-          <a href="${unsubscribeUrl}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
+          <a href="${unsubscribeCopy}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
         </p>
       </div>
     `,
@@ -212,10 +213,14 @@ export async function sendReminderEmail(to, name, options = {}) {
   const userId = options.userId || null;
 
   const unsubscribeToken = createUnsubscribeToken({ userId, email: to });
-  const unsubscribeUrl = `${normalizedApiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(
-    unsubscribeToken
-  )}`;
-  const listUnsubscribe = `<mailto:${supportAddress}?subject=unsubscribe>, <${unsubscribeUrl}>`;
+  const unsubscribeUrl = unsubscribeToken
+    ? `${normalizedApiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(
+        unsubscribeToken
+      )}`
+    : null;
+  const listUnsubscribe = unsubscribeUrl
+    ? `<mailto:${supportAddress}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportAddress}?subject=unsubscribe>`;
   const message = buildReminderMessage(
     name,
     appBaseUrl,
@@ -263,7 +268,7 @@ export async function sendReminderEmail(to, name, options = {}) {
       "List-Unsubscribe": listUnsubscribe,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       "X-Entity-Ref-ID": entityRefId,
-      "X-List-Unsubscribe-URL": unsubscribeUrl,
+      ...(unsubscribeUrl ? { "X-List-Unsubscribe-URL": unsubscribeUrl } : {}),
     },
     messageId,
   });
@@ -304,7 +309,29 @@ ${circleUrl}
       <p>Hi ${recipientName || "there"},</p>
       <p>${actorLabel} shared a new gratitude entry in <strong>${circleName}</strong>.</p>
       <p>
-        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">Open circle</a>
+        <a
+          href="${circleUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Open Circle
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">${circleUrl}</a>
       </p>
     </div>
   `;
@@ -359,7 +386,29 @@ ${circleUrl}
       <p>Hi ${recipientName || "there"},</p>
       <p><strong>${joinerName}</strong> joined <strong>${circleName}</strong>.</p>
       <p>
-        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">Open circle</a>
+        <a
+          href="${circleUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Open Circle
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">${circleUrl}</a>
       </p>
     </div>
   `;

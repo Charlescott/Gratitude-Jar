@@ -124,7 +124,7 @@ router.post("/join", requireUser, async (req, res) => {
 
       const joinerName = joinerResult.rows[0]?.name || "A new member";
 
-      await notifyCircleMembers(
+      notifyCircleMembers(
         memberRecipientsResult.rows,
         ({ email, name }) =>
           sendCircleJoinNotificationEmail(email, {
@@ -134,7 +134,7 @@ router.post("/join", requireUser, async (req, res) => {
             joinerName,
           }),
         "Circle join notification"
-      );
+      ).catch((err) => console.error("Circle join notification error:", err));
     }
 
     res.json(circle);
@@ -344,7 +344,9 @@ router.post("/:id/entries", requireUser, async (req, res) => {
     const authorName = authorResult.rows[0]?.name || "A member";
     const circleName = circleResult.rows[0]?.name || "your circle";
 
-    await notifyCircleMembers(
+    res.status(201).json(entry);
+
+    notifyCircleMembers(
       memberRecipientsResult.rows,
       ({ email, name }) =>
         sendCircleEntryNotificationEmail(email, {
@@ -355,9 +357,7 @@ router.post("/:id/entries", requireUser, async (req, res) => {
           isAnonymous: entry.is_anonymous,
         }),
       "Circle entry notification"
-    );
-
-    res.status(201).json(entry);
+    ).catch((err) => console.error("Circle entry notification error:", err));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to create entry" });

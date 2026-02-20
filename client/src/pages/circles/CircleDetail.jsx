@@ -20,6 +20,7 @@ export default function CircleDetail({ token }) {
   const [entries, setEntries] = useState([]);
   const [newEntry, setNewEntry] = useState("");
   const [postAnonymously, setPostAnonymously] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [showExplore, setShowExplore] = useState(false);
@@ -75,15 +76,15 @@ export default function CircleDetail({ token }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const visibleEntries = useMemo(() => entries.slice(0, 10), [entries]);
-  const archivedEntries = useMemo(() => entries.slice(10), [entries]);
+  const visibleEntries = useMemo(() => entries.slice(0, 8), [entries]);
+  const archivedEntries = useMemo(() => entries.slice(8), [entries]);
 
   useEffect(() => {
     if (visibleEntries.length === 0) return;
 
     const radius = window.innerWidth <= 768 ? 150 : 240;
-    const basePadding = window.innerWidth <= 768 ? 10 : 14;
-    const maxAttempts = 200;
+    const basePadding = window.innerWidth <= 768 ? 12 : 16;
+    const maxAttempts = 600;
 
     setEntryPositions((prev) => {
       const visibleIds = new Set(visibleEntries.map((entry) => entry.id));
@@ -99,9 +100,9 @@ export default function CircleDetail({ token }) {
         const contentLength = (entry.content || "").length;
         const nameLength = (entry.name || "").length;
         const score = contentLength + nameLength * 0.6;
-        const min = window.innerWidth <= 768 ? 42 : 50;
-        const max = window.innerWidth <= 768 ? 78 : 92;
-        return Math.max(min, Math.min(max, 34 + score * 0.35));
+        const min = window.innerWidth <= 768 ? 48 : 58;
+        const max = window.innerWidth <= 768 ? 88 : 104;
+        return Math.max(min, Math.min(max, 38 + score * 0.38));
       }
 
       function isFarEnough(x, y, candidateRadius) {
@@ -116,39 +117,55 @@ export default function CircleDetail({ token }) {
         return true;
       }
 
-      for (const entry of visibleEntries) {
+        for (const entry of visibleEntries) {
         if (next[entry.id]) continue;
         const candidateRadius = estimateRadius(entry);
+        const safetyRadius = candidateRadius + 8;
         let placed = false;
         let attempt = 0;
-        let best = null;
 
         while (!placed && attempt < maxAttempts) {
           const angle = Math.random() * Math.PI * 2;
           const distance = Math.sqrt(Math.random()) * radius;
           const x = Math.cos(angle) * distance;
           const y = Math.sin(angle) * distance;
-          if (isFarEnough(x, y, candidateRadius)) {
+          if (isFarEnough(x, y, safetyRadius)) {
             const rotate = (Math.random() * 6 - 3).toFixed(1);
-            next[entry.id] = { x, y, rotate, radius: candidateRadius };
+            next[entry.id] = { x, y, rotate, radius: safetyRadius };
             existing.push(next[entry.id]);
             placed = true;
-          } else if (!best || Math.hypot(x, y) > Math.hypot(best.x, best.y)) {
-            best = { x, y };
           }
           attempt += 1;
         }
 
         if (!placed) {
-          const fallback = best || { x: 0, y: 0 };
-          const rotate = (Math.random() * 6 - 3).toFixed(1);
-          next[entry.id] = {
-            x: fallback.x,
-            y: fallback.y,
-            rotate,
-            radius: candidateRadius,
-          };
-          existing.push(next[entry.id]);
+          // Deterministic sweep fallback: try outer rings before giving up.
+          let fallbackPlaced = false;
+          for (let distance = radius * 0.55; distance <= radius; distance += 14) {
+            for (let angleStep = 0; angleStep < 24; angleStep += 1) {
+              const angle = (Math.PI * 2 * angleStep) / 24;
+              const x = Math.cos(angle) * distance;
+              const y = Math.sin(angle) * distance;
+              if (isFarEnough(x, y, safetyRadius)) {
+                const rotate = (Math.random() * 6 - 3).toFixed(1);
+                next[entry.id] = { x, y, rotate, radius: safetyRadius };
+                existing.push(next[entry.id]);
+                fallbackPlaced = true;
+                break;
+              }
+            }
+            if (fallbackPlaced) break;
+          }
+
+          if (!fallbackPlaced) {
+            // Last resort: place on perimeter with stable spacing.
+            const angle = (Math.PI * 2 * existing.length) / Math.max(visibleEntries.length, 1);
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            const rotate = (Math.random() * 6 - 3).toFixed(1);
+            next[entry.id] = { x, y, rotate, radius: safetyRadius };
+            existing.push(next[entry.id]);
+          }
         }
       }
       return next;
@@ -159,18 +176,27 @@ export default function CircleDetail({ token }) {
   if (!circle) return <p>Loading…</p>;
 
   async function handlePost() {
-    if (!newEntry.trim()) return;
+    if (!newEntry.trim() || isPosting) return;
 
-    const entry = await createCircleEntry(
-      token,
-      id,
-      newEntry,
-      undefined,
-      postAnonymously
-    );
-    setEntries((prev) => [entry, ...prev]);
-    setNewEntry("");
-    setPostAnonymously(false);
+    setIsPosting(true);
+    setError("");
+
+    try {
+      const entry = await createCircleEntry(
+        token,
+        id,
+        newEntry,
+        undefined,
+        postAnonymously
+      );
+      setEntries((prev) => [entry, ...prev]);
+      setNewEntry("");
+      setPostAnonymously(false);
+    } catch (err) {
+      setError(err.message || "Failed to share gratitude.");
+    } finally {
+      setIsPosting(false);
+    }
   }
 
   async function handleDeleteEntry(entryId) {
@@ -346,11 +372,12 @@ export default function CircleDetail({ token }) {
           value={newEntry}
           onChange={(e) => setNewEntry(e.target.value)}
           placeholder={prompt || "Share something you're grateful for..."}
+          disabled={isPosting}
         />
 
         <div className="circle-actions-row">
-          <button className="btn btn-primary" onClick={handlePost}>
-            Share Gratitude
+          <button className="btn btn-primary" onClick={handlePost} disabled={isPosting}>
+            {isPosting ? "Sharing..." : "Share Gratitude"}
           </button>
 
           <button
@@ -367,6 +394,7 @@ export default function CircleDetail({ token }) {
             type="checkbox"
             checked={postAnonymously}
             onChange={(e) => setPostAnonymously(e.target.checked)}
+            disabled={isPosting}
           />
           Post anonymously in this circle
         </label>

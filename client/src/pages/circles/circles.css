@@ -468,10 +468,15 @@ textarea:focus {
   padding-top: 0;
 }
 
+.circle-detail.has-entries {
+  padding-top: 2.85rem;
+}
+
 .circle-header {
   position: relative;
   z-index: 3;
   overflow: visible;
+
   width: 100%;
   transform: translateY(-24px);
 }
@@ -707,6 +712,10 @@ textarea:focus {
   justify-items: center;
 }
 
+.circle-detail.has-entries .circle-actions {
+  margin-top: 7.1rem;
+}
+
 .circle-anon-toggle {
   font-size: 0.9rem;
   color: var(--muted-text);
@@ -891,6 +900,10 @@ body.circle-detail-view .circle-gradient-wrapper {
     row-gap: 0.9rem;
   }
 
+  .circle-detail.has-entries {
+    padding-top: 1.45rem;
+  }
+
   .circle-header {
     transform: translateY(-10px);
   }
@@ -915,6 +928,10 @@ body.circle-detail-view .circle-gradient-wrapper {
   .circle-actions {
     margin-top: 1.35rem;
     row-gap: 0.7rem;
+  }
+
+  .circle-detail.has-entries .circle-actions {
+    margin-top: 2.55rem;
   }
 
   .circle-actions textarea {

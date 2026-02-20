@@ -1,0 +1,11 @@
+{
+  "folders": [
+	{
+		"name": "Capstone",
+		"path": "../../../../.."
+	}
+],
+  "settings": {
+    "postman.settings.dotenv-detection-notification-visibility": false
+  }
+}
