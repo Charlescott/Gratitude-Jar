@@ -37,21 +37,36 @@ export default function Header({ token, onLogout, theme, setTheme }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const headerPadding = isCircles
+    ? isMobile
+      ? "0.35rem 0.65rem"
+      : "0.3rem 1rem"
+    : isMobile
+    ? "0.45rem 0.75rem"
+    : "0.75rem 1rem";
+  const logoHeight = isCircles
+    ? isMobile
+      ? "32px"
+      : "56px"
+    : isMobile
+    ? "38px"
+    : "80px";
+  const profileButtonStyle = isMobile
+    ? { minWidth: "auto", padding: "0.45rem 0.85rem", fontSize: "0.9rem" }
+    : undefined;
+
   return (
     <header
       style={{
-        padding: isCircles
-          ? isMobile
-            ? "0.2rem 0.65rem"
-            : "0.25rem 1rem"
-          : isMobile
-          ? "0.5rem 0.75rem"
-          : "0.75rem 1rem",
+        padding: headerPadding,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         position: "sticky",
         top: 0,
+        width: "100%",
+        minHeight: isMobile ? "56px" : "72px",
+        boxSizing: "border-box",
         zIndex: 100,
         background: isCircles ? "transparent" : "var(--bg-color)",
         backdropFilter: isCircles ? "none" : "blur(8px)",
@@ -64,13 +79,9 @@ export default function Header({ token, onLogout, theme, setTheme }) {
             src={logo}
             alt="Gratitude Jar logo"
             style={{
-              height: isCircles
-                ? isMobile
-                  ? "44px"
-                  : "56px"
-                : isMobile
-                ? "58px"
-                : "80px",
+              height: logoHeight,
+              width: "auto",
+              display: "block",
             }}
           />
         </Link>
@@ -83,7 +94,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: isMobile ? "0.75rem" : "1.5rem",
+          gap: isMobile ? "0.5rem" : "1rem",
           position: "relative",
         }}
       >
@@ -96,6 +107,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
             <button
               className="btn btn-secondary"
               onClick={() => setProfileOpen((prev) => !prev)}
+              style={profileButtonStyle}
             >
               Profile
             </button>
@@ -167,7 +179,11 @@ export default function Header({ token, onLogout, theme, setTheme }) {
         )}
 
         {/* Theme toggle */}
-        <button onClick={toggleTheme} className="icon-btn">
+        <button
+          onClick={toggleTheme}
+          className="icon-btn"
+          style={isMobile ? { padding: "0.25rem 0.4rem", lineHeight: 1 } : undefined}
+        >
           {theme === "light" ? "🌙" : "☀️"}
         </button>
       </div>

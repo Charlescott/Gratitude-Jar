@@ -23,10 +23,12 @@
 }
 
   .dropdown {
-    position: static !important;
-    transform: none !important;
-    margin-top: 0.75rem;
-    box-shadow: none;
+    position: absolute !important;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    transform: translateY(-15px) !important;
+    margin-top: 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   }
 
   .dropdown-menu {
@@ -99,6 +101,13 @@ body,
   height: 100%;
   width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
 }
 
 /* =====================================================
@@ -128,6 +137,15 @@ body {
   color: var(--text-color);
   font-family: "Segoe UI", sans-serif;
   transition: background-color 0.3s, color 0.3s;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 a {
@@ -856,6 +874,14 @@ textarea:-webkit-autofill {
   .entry-card form .btn.btn-secondary,
   .entry-card form .btn.btn-primary {
     width: 100%;
+  }
+
+  .entry-card,
+  .reminders-container,
+  .circles-content,
+  .circle-detail {
+    width: 100%;
+    max-width: 100%;
   }
 
   .home {
