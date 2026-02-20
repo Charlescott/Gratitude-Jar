@@ -28,6 +28,8 @@ export default function CircleDetail({ token }) {
   const [showArchive, setShowArchive] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [focusedEntryId, setFocusedEntryId] = useState(null);
+  const [isEntering, setIsEntering] = useState(false);
   const membersDropdownRef = useRef(null);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export default function CircleDetail({ token }) {
     setEntries([]);
     setEntryPositions({});
     setError("");
+    setFocusedEntryId(null);
 
     fetchCircleById(token, id)
       .then(setCircle)
@@ -45,12 +48,24 @@ export default function CircleDetail({ token }) {
   }, [id, token]);
 
   useEffect(() => {
+    setIsEntering(true);
     document.body.classList.add("circles-celebrating");
     document.body.classList.add("circle-detail-view");
+    document.body.classList.add("circle-detail-enter");
+    const enterTimer = window.setTimeout(() => {
+      document.body.classList.remove("circle-detail-enter");
+    }, 1200);
+    const enteringTimer = window.setTimeout(() => {
+      setIsEntering(false);
+    }, 1650);
 
     return () => {
+      window.clearTimeout(enterTimer);
+      window.clearTimeout(enteringTimer);
       document.body.classList.remove("circles-celebrating");
       document.body.classList.remove("circle-detail-view");
+      document.body.classList.remove("circle-detail-enter");
+      setIsEntering(false);
     };
   }, [id]);
 
@@ -81,7 +96,6 @@ export default function CircleDetail({ token }) {
 
   useEffect(() => {
     if (visibleEntries.length === 0) return;
-
     const radius = window.innerWidth <= 768 ? 150 : 240;
     const basePadding = window.innerWidth <= 768 ? 12 : 16;
     const maxAttempts = 600;
@@ -117,7 +131,7 @@ export default function CircleDetail({ token }) {
         return true;
       }
 
-        for (const entry of visibleEntries) {
+      for (const entry of visibleEntries) {
         if (next[entry.id]) continue;
         const candidateRadius = estimateRadius(entry);
         const safetyRadius = candidateRadius + 8;
@@ -252,7 +266,11 @@ export default function CircleDetail({ token }) {
   }
 
   return (
-    <div className={`circle-detail ${entries.length ? "has-entries" : "no-entries"}`}>
+    <div
+      className={`circle-detail ${entries.length ? "has-entries" : "no-entries"} ${
+        isEntering ? "entering" : ""
+      }`}
+    >
       {/* Header */}
       <section className="circle-header">
         <h1>{circle.name}</h1>
@@ -303,36 +321,59 @@ export default function CircleDetail({ token }) {
             Nothing has been shared yet. Be the first to start the ripple.
           </p>
         ) : (
-          <div className="entries-list">
-            {visibleEntries.map((e) => (
-              <div
-                key={e.id}
-                className="circle-entry-card"
-                style={{
-                  left: `calc(50% + ${entryPositions[e.id]?.x || 0}px)`,
-                  top: `calc(50% + ${entryPositions[e.id]?.y || 0}px)`,
-                  transform: `translate(-50%, -50%) rotate(${
-                    entryPositions[e.id]?.rotate || 0
-                  }deg)`,
-                }}
-              >
-                {e.is_mine && (
-                  <button
-                    type="button"
-                    className="circle-entry-delete"
-                    onClick={() => handleDeleteEntry(e.id)}
-                    aria-label="Delete entry"
-                    title="Delete entry"
-                  >
-                    ×
-                  </button>
-                )}
-                <p>{e.content}</p>
-                <small className="circle-entry-author">
-                  <span className="circle-entry-dash">–</span> {e.name}
-                </small>
-              </div>
-            ))}
+          <div className="entries-list" onClick={() => setFocusedEntryId(null)}>
+            {visibleEntries.map((e, index) => {
+              const isFocused = focusedEntryId === e.id;
+              const rotate = isFocused ? 0 : entryPositions[e.id]?.rotate || 0;
+              const scale = isFocused ? 1.3 : 1;
+              const revealDelay = 760 + ((e.id * 97 + index * 53) % 380);
+
+              return (
+                <div
+                  key={e.id}
+                  className={`circle-entry-card ${isFocused ? "focused" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Expand entry"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setFocusedEntryId((prev) => (prev === e.id ? null : e.id));
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setFocusedEntryId((prev) => (prev === e.id ? null : e.id));
+                    }
+                  }}
+                  style={{
+                    "--entry-delay": `${revealDelay}ms`,
+                    left: `calc(50% + ${entryPositions[e.id]?.x || 0}px)`,
+                    top: `calc(50% + ${entryPositions[e.id]?.y || 0}px)`,
+                    transform: `translate(-50%, -50%) rotate(${rotate}deg) scale(${scale})`,
+                    zIndex: isFocused ? 25 : 2,
+                  }}
+                >
+                  {e.is_mine && (
+                    <button
+                      type="button"
+                      className="circle-entry-delete"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleDeleteEntry(e.id);
+                      }}
+                      aria-label="Delete entry"
+                      title="Delete entry"
+                    >
+                      ×
+                    </button>
+                  )}
+                  <p>{e.content}</p>
+                  <small className="circle-entry-author">
+                    <span className="circle-entry-dash">–</span> {e.name}
+                  </small>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
