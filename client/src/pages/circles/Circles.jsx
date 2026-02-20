@@ -135,7 +135,7 @@ export default function CirclesPage({ token }) {
           </h1>
 
           {myCircles.length === 0 && (
-            <p className="circles-description">
+            <p className="circles-description circles-description-intro">
               Circles are shared spaces for quiet gratitude. Create one for
               people you trust, and reflect together without noise, pressure,
               or timelines.

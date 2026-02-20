@@ -974,7 +974,8 @@ body.circle-detail-view .circle-gradient-wrapper {
     width: 100%;
     min-height: calc(100svh - 56px);
     padding: 0.25rem 0;
-    --mobile-ring-top: 37vh;
+    --mobile-ring-top: 37svh;
+    --mobile-detail-ring-top: 39svh;
   }
 
   body:not(.circle-detail-view) .circles-page {
@@ -982,7 +983,7 @@ body.circle-detail-view .circle-gradient-wrapper {
   }
 
   body:not(.circle-detail-view) .circles-content.show {
-    transform: translateY(calc(var(--mobile-ring-top) - 50vh + 2.5vh));
+    transform: translateY(calc(var(--mobile-ring-top) - 50svh + 2.5svh));
   }
 
   .circle-gradient-wrapper {
@@ -1004,6 +1005,13 @@ body.circle-detail-view .circle-gradient-wrapper {
     margin-bottom: 1.25rem;
     font-size: 0.92rem;
     line-height: 1.55;
+  }
+
+  .circles-description-intro {
+    max-width: min(290px, 74vw);
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.5;
   }
 
   .my-circles-container {
@@ -1118,6 +1126,6 @@ body.circle-detail-view .circle-gradient-wrapper {
   }
 
   body.circle-detail-view .circle-gradient-wrapper {
-    top: calc(var(--mobile-ring-top) + var(--header-offset)) !important;
+    top: calc(var(--mobile-detail-ring-top) + var(--header-offset)) !important;
   }
 }
