@@ -2,32 +2,53 @@ import { useEffect, useState } from "react";
 import ReminderForm from "../components/ReminderForm";
 
 export default function RemindersPage() {
+  const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
   const [reminder, setReminder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || !API) {
+      setReminder(null);
+      setLoading(false);
+      setError(!API ? "API URL is not configured." : "");
+      return;
+    }
+
+    let isActive = true;
+    setLoading(true);
+    setError("");
+    setReminder(null);
+
     async function fetchReminder() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("https://gratuity-jar-api.onrender.com/reminders", {
+        const res = await fetch(`${API}/reminders`, {
+          cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) throw new Error("Failed to fetch reminder");
 
         const data = await res.json();
+        if (!isActive) return;
         setReminder(data);
       } catch (err) {
+        if (!isActive) return;
         console.error(err);
         setError("Failed to load reminder.");
       } finally {
+        if (!isActive) return;
         setLoading(false);
       }
     }
 
     fetchReminder();
-  }, []);
+
+    return () => {
+      isActive = false;
+    };
+  }, [API]);
 
   if (loading) return <p>Loading reminders...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;

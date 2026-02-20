@@ -35,7 +35,7 @@ export default function Home({ isAuthenticated, theme, setTheme }) {
 
       <img
         src={logo}
-        alt="Gratuity Jar logo"
+        alt="Gratitude Jar logo"
         className={`home-logo ${showLogo ? "show" : ""}`}
       />
 

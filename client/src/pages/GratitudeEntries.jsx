@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getRandomQuestion } from "../api/questions";
 
 export default function GratitudeEntries({ token }) {
+  const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,10 +36,13 @@ export default function GratitudeEntries({ token }) {
   // Add new entry
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!token) return;
+    if (!token || !API) {
+      setError("API URL is not configured.");
+      return;
+    }
 
     try {
-      const res = await fetch("https://gratuity-jar-api.onrender.com/entries", {
+      const res = await fetch(`${API}/entries`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,8 +72,13 @@ export default function GratitudeEntries({ token }) {
 
   // Delete entry
   async function handleDelete(id) {
+    if (!API) {
+      setError("API URL is not configured.");
+      return;
+    }
+
     try {
-      const res = await fetch(`https://gratuity-jar-api.onrender.com/entries/${id}`, {
+      const res = await fetch(`${API}/entries/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -86,22 +95,41 @@ export default function GratitudeEntries({ token }) {
 
   // Fetch entries
   useEffect(() => {
+    if (!token || !API) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setLoading(true);
+    setError(null);
+    setEntries([]);
+
     async function fetchEntries() {
       try {
-        const res = await fetch("https://gratuity-jar-api.onrender.com/entries", {
+        const res = await fetch(`${API}/entries`, {
+          cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch entries");
         const data = await res.json();
+        if (!isActive) return;
         setEntries(data.map((entry) => ({ ...entry, show: true })));
       } catch (err) {
+        if (!isActive) return;
         setError(err.message);
       } finally {
+        if (!isActive) return;
         setLoading(false);
       }
     }
     fetchEntries();
-  }, [token]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [API, token]);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;

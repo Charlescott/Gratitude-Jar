@@ -29,7 +29,7 @@ pool.query("SELECT NOW()", (err, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Gratuity Jar Server is running");
+  res.send("Gratitude Jar Server is running");
 });
 
 console.log("DB HOST:", process.env.DB_HOST);

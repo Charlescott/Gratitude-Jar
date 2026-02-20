@@ -339,7 +339,7 @@ export default function CircleDetail({ token }) {
 
       {showExplore && (
         <section className="circle-explore">
-          <p className="circle-explore-title">Explore more of Gratuity</p>
+          <p className="circle-explore-title">Explore more of Gratitude</p>
           <p className="circle-explore-text">
             You can also keep personal gratitude entries and set reminders.
           </p>

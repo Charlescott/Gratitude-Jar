@@ -75,7 +75,7 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         />
       )}
 
-      <Routes>
+      <Routes location={location} key={`${location.pathname}${location.search}`}>
         <Route
           path="/"
           element={

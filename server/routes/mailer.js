@@ -73,7 +73,7 @@ ${unsubscribeCopy}
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
         <div style="margin-bottom: 16px;">
-          <img src="${logoUrl}" alt="Gratuity Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+          <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
         </div>
         <p>Hi ${name},</p>
         <p>This is your reminder to add a gratitude entry.</p>

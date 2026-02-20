@@ -62,7 +62,7 @@ export default function Header({ token, onLogout, theme, setTheme }) {
         <Link to="/">
           <img
             src={logo}
-            alt="Gratuity Jar logo"
+            alt="Gratitude Jar logo"
             style={{
               height: isCircles
                 ? isMobile
