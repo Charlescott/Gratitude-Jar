@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { loginUser, registerUser } from "../api";
 
 export default function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,9 +21,25 @@ export default function AuthForm({ onLogin }) {
     try {
       const result = isLogin
         ? await loginUser({ email, password })
-        : await registerUser({ name, email, password });
+        : await registerUser({
+            name,
+            email,
+            password,
+            password_confirm: passwordConfirm,
+          });
 
-      onLogin(result.token);
+      if (isLogin) {
+        onLogin(result.token);
+        return;
+      }
+
+      setError("");
+      setLoading(false);
+      setIsLogin(true);
+      setPassword("");
+      setPasswordConfirm("");
+      setName("");
+      alert(result.message || "Please verify your email, then log in.");
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -60,6 +78,17 @@ export default function AuthForm({ onLogin }) {
           required
         />
 
+        {!isLogin && (
+          <input
+            placeholder="Confirm Password"
+            type="password"
+            autoComplete="new-password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            required
+          />
+        )}
+
         <button className="btn btn-secondary" type="submit" disabled={loading}>
           {loading
             ? isLogin
@@ -70,6 +99,11 @@ export default function AuthForm({ onLogin }) {
             : "Register"}
         </button>
       </form>
+      {isLogin && (
+        <p style={{ marginTop: "0.75rem", fontSize: "0.9rem" }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </p>
+      )}
 
       <p style={{ marginTop: "1rem", fontSize: "0.9rem" }}>
         {isLogin ? "New here?" : "Already have an account?"}{" "}

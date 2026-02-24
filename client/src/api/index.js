@@ -36,6 +36,42 @@ export async function registerUser(credentials) {
   return result;
 }
 
+export async function forgotPassword(email) {
+  const response = await fetch(`${API}/auth/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to request password reset");
+  }
+
+  return result;
+}
+
+export async function resetPassword({ token, password }) {
+  const response = await fetch(`${API}/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token, password }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to reset password");
+  }
+
+  return result;
+}
+
 function authHeaders(token) {
   return {
     "Content-Type": "application/json",

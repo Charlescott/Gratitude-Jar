@@ -9,6 +9,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+function assertEmailProviderConfigured() {
+  const hasResend = Boolean(process.env.RESEND_API_KEY);
+  const hasSmtp = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+
+  if (!hasResend && !hasSmtp) {
+    throw new Error(
+      "Email provider is not configured. Set RESEND_API_KEY or EMAIL_USER/EMAIL_PASS."
+    );
+  }
+}
+
 function getFromAddress(from) {
   const match = from?.match(/<([^>]+)>/);
   return (match ? match[1] : from || "").trim().toLowerCase();
@@ -160,6 +171,8 @@ async function sendAppEmail({
   entityRefId,
   messageId,
 }) {
+  assertEmailProviderConfigured();
+
   if (process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -202,6 +215,8 @@ async function sendAppEmail({
 }
 
 export async function sendReminderEmail(to, name, options = {}) {
+  assertEmailProviderConfigured();
+
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
   const supportAddress = process.env.EMAIL_SUPPORT || from;
   const appBaseUrl = process.env.APP_URL || "https://gratuity-jar.vercel.app";
@@ -414,6 +429,142 @@ ${circleUrl}
   `;
 
   const entityRefId = `circle-join-${circleId}-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  await sendAppEmail({
+    to,
+    from,
+    supportAddress,
+    subject,
+    text,
+    html,
+    entityRefId,
+    messageId,
+  });
+}
+
+export async function sendAccountVerificationEmail(
+  to,
+  { recipientName, verifyUrl }
+) {
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+
+  const subject = "Verify your Gratitude Jar account";
+  const text = `Hi ${recipientName || "there"},
+
+Please verify your email to activate your account.
+
+Verify account:
+${verifyUrl}
+`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hi ${recipientName || "there"},</p>
+      <p>Please verify your email to activate your account.</p>
+      <p>
+        <a
+          href="${verifyUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Verify Email
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${verifyUrl}" style="color:#2f80ed; text-decoration:underline;">${verifyUrl}</a>
+      </p>
+    </div>
+  `;
+
+  const entityRefId = `verify-email-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  await sendAppEmail({
+    to,
+    from,
+    supportAddress,
+    subject,
+    text,
+    html,
+    entityRefId,
+    messageId,
+  });
+}
+
+export async function sendPasswordResetEmail(to, { recipientName, resetUrl }) {
+  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+
+  const subject = "Reset your Gratitude Jar password";
+  const text = `Hi ${recipientName || "there"},
+
+We received a request to reset your password.
+
+Reset password:
+${resetUrl}
+
+If you did not request this, you can ignore this email.
+`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hi ${recipientName || "there"},</p>
+      <p>We received a request to reset your password.</p>
+      <p>
+        <a
+          href="${resetUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Reset Password
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${resetUrl}" style="color:#2f80ed; text-decoration:underline;">${resetUrl}</a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If you did not request this, you can ignore this email.
+      </p>
+    </div>
+  `;
+
+  const entityRefId = `reset-password-${Date.now()}-${to}`.replace(
     /[^a-zA-Z0-9._-]/g,
     "_"
   );

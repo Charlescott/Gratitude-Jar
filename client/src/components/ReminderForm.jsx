@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 export default function ReminderForm({ reminder, onSave }) {
+  const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
   const [time, setTime] = useState("");
   const [frequency, setFrequency] = useState("daily");
   const [active, setActive] = useState(true);
@@ -27,23 +28,24 @@ export default function ReminderForm({ reminder, onSave }) {
     }
 
     try {
+      if (!API) {
+        throw new Error("API URL is not configured");
+      }
+
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        "https://gratuity-jar-api.onrender.com/reminders",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            time_of_day: time,
-            frequency,
-            active,
-            timezone: userTimezone,
-          }),
-        }
-      );
+      const res = await fetch(`${API}/reminders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          time_of_day: time,
+          frequency,
+          active,
+          timezone: userTimezone,
+        }),
+      });
 
       if (!res.ok) throw new Error("Failed to save reminder");
 

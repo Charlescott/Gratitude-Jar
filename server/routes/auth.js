@@ -2,34 +2,87 @@ import express from "express";
 import pool from "../db/index.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import {
+  sendAccountVerificationEmail,
+  sendPasswordResetEmail,
+} from "./mailer.js";
 
 const router = express.Router();
+let authSchemaReadyPromise = null;
+
+function getAppBaseUrl(req) {
+  return (process.env.APP_URL || `${req.protocol}://${req.get("host")}`).replace(
+    /\/$/,
+    ""
+  );
+}
+
+function getApiBaseUrl(req) {
+  return (process.env.API_URL || `${req.protocol}://${req.get("host")}`).replace(
+    /\/$/,
+    ""
+  );
+}
+
+async function ensureAuthSchema() {
+  if (!authSchemaReadyPromise) {
+    authSchemaReadyPromise = (async () => {
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE`
+      );
+      await pool.query(
+        `UPDATE users
+         SET email_verified = TRUE
+         WHERE email_verified IS NULL`
+      );
+    })();
+  }
+
+  await authSchemaReadyPromise;
+}
 
 router.post("/register", async (req, res) => {
-  const { email, password, name } = req.body;
+  const { email, password, password_confirm, name } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
+  if (password_confirm !== undefined && password !== password_confirm) {
+    return res.status(400).json({ error: "Passwords do not match" });
+  }
+
   try {
+    await ensureAuthSchema();
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (email, password_hash, name)
-            VALUES ($1, $2, $3) RETURNING id, email, name`,
+      `INSERT INTO users (email, password_hash, name, email_verified)
+            VALUES ($1, $2, $3, false) RETURNING id, email, name`,
       [email, hashedPassword, name]
     );
 
-    const token = jwt.sign(
-      { id: result.rows[0].id, email: result.rows[0].email },
+    const user = result.rows[0];
+    const apiBaseUrl = getApiBaseUrl(req);
+    const verifyToken = jwt.sign(
+      { typ: "verify_email", uid: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "1d" }
+      { expiresIn: "24h" }
     );
+    const verifyUrl = `${apiBaseUrl}/auth/verify-email?token=${encodeURIComponent(
+      verifyToken
+    )}`;
+
+    sendAccountVerificationEmail(user.email, {
+      recipientName: user.name,
+      verifyUrl,
+    }).catch((err) => console.error("Verification email error:", err));
 
     res.status(201).json({
-      token,
-      user: result.rows[0],
+      message:
+        "Account created. Please check your email and verify your account before logging in.",
     });
   } catch (err) {
     if (err.code === "23505") {
@@ -44,6 +97,8 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    await ensureAuthSchema();
+
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
@@ -57,6 +112,13 @@ router.post("/login", async (req, res) => {
 
     if (!validPassword) {
       return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    if (!user.email_verified) {
+      return res.status(403).json({
+        error:
+          "Please verify your email before logging in. Check your inbox for the verification link.",
+      });
     }
 
     const token = jwt.sign(
@@ -76,6 +138,111 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+router.get("/verify-email", async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("Missing verification token.");
+  }
+
+  try {
+    await ensureAuthSchema();
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (payload?.typ !== "verify_email" || !payload?.uid) {
+      return res.status(400).send("Invalid verification token.");
+    }
+
+    await pool.query("UPDATE users SET email_verified = true WHERE id = $1", [
+      payload.uid,
+    ]);
+
+    return res.status(200).send(`
+      <html>
+        <head><title>Email Verified</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2>Email verified</h2>
+          <p>Your account is now active. You can return to the app and log in.</p>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error("Email verification error:", err);
+    return res.status(400).send("Verification link is invalid or expired.");
+  }
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    await ensureAuthSchema();
+
+    const result = await pool.query(
+      "SELECT id, email, name FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (result.rows[0]) {
+      const user = result.rows[0];
+      const appBaseUrl = getAppBaseUrl(req);
+      const resetToken = jwt.sign(
+        { typ: "reset_password", uid: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "30m" }
+      );
+      const resetUrl = `${appBaseUrl}/reset-password?token=${encodeURIComponent(
+        resetToken
+      )}`;
+
+      sendPasswordResetEmail(user.email, {
+        recipientName: user.name,
+        resetUrl,
+      }).catch((err) => console.error("Password reset email error:", err));
+    }
+
+    return res.json({
+      message:
+        "If an account with that email exists, a password reset link has been sent.",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to process request" });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ error: "Token and password are required" });
+  }
+
+  try {
+    await ensureAuthSchema();
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (payload?.typ !== "reset_password" || !payload?.uid) {
+      return res.status(400).json({ error: "Invalid reset token" });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+      password_hash,
+      payload.uid,
+    ]);
+
+    return res.json({ message: "Password updated successfully." });
+  } catch (err) {
+    console.error("Password reset error:", err);
+    return res.status(400).json({ error: "Reset link is invalid or expired." });
   }
 });
 
