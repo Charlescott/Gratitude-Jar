@@ -24,6 +24,10 @@ function getApiBaseUrl(req) {
   );
 }
 
+function normalizeEmail(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
 async function ensureAuthSchema() {
   if (!authSchemaReadyPromise) {
     authSchemaReadyPromise = (async () => {
@@ -43,7 +47,8 @@ async function ensureAuthSchema() {
 }
 
 router.post("/register", async (req, res) => {
-  const { email, password, password_confirm, name } = req.body;
+  const { password, password_confirm, name } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
@@ -94,14 +99,16 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   try {
     await ensureAuthSchema();
 
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const result = await pool.query(
+      "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
+      [email]
+    );
 
     const user = result.rows[0];
     if (!user) {
@@ -176,7 +183,7 @@ router.get("/verify-email", async (req, res) => {
 });
 
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   if (!email) {
     return res.status(400).json({ error: "Email is required" });
@@ -186,7 +193,7 @@ router.post("/forgot-password", async (req, res) => {
     await ensureAuthSchema();
 
     const result = await pool.query(
-      "SELECT id, email, name FROM users WHERE email = $1",
+      "SELECT id, email, name FROM users WHERE LOWER(email) = LOWER($1)",
       [email]
     );
 
