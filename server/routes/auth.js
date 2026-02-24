@@ -208,11 +208,18 @@ router.post("/forgot-password", async (req, res) => {
       const resetUrl = `${appBaseUrl}/reset-password?token=${encodeURIComponent(
         resetToken
       )}`;
-
-      sendPasswordResetEmail(user.email, {
-        recipientName: user.name,
-        resetUrl,
-      }).catch((err) => console.error("Password reset email error:", err));
+      console.log(`Forgot password requested for existing user: ${user.email}`);
+      try {
+        await sendPasswordResetEmail(user.email, {
+          recipientName: user.name,
+          resetUrl,
+        });
+        console.log(`Password reset email sent: ${user.email}`);
+      } catch (mailErr) {
+        console.error("Password reset email error:", mailErr);
+      }
+    } else {
+      console.log(`Forgot password requested for unknown email: ${email}`);
     }
 
     return res.json({
