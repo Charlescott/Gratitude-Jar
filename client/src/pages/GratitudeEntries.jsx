@@ -148,6 +148,7 @@ export default function GratitudeEntries({ token }) {
             onChange={(e) => setContent(e.target.value)}
             placeholder={prompt || "Write something..."}
             required
+            style={{ resize: "none" }}
           />
 
           <div className="form-row">

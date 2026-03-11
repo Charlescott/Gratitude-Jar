@@ -3,6 +3,7 @@ import pool from "../db/index.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import requireUser from "../middleware/requireUser.js";
 import {
   sendAccountVerificationEmail,
   sendPasswordResetEmail,
@@ -293,6 +294,52 @@ router.post("/reset-password", async (req, res) => {
   } catch (err) {
     console.error("Password reset error:", err);
     return res.status(400).json({ error: "Reset link is invalid or expired." });
+  }
+});
+
+router.post("/delete-account", requireUser, async (req, res) => {
+  const { password, confirmation } = req.body || {};
+
+  if (!password) {
+    return res.status(400).json({ error: "Password is required" });
+  }
+
+  if (String(confirmation || "").trim().toUpperCase() !== "DELETE") {
+    return res
+      .status(400)
+      .json({ error: "Please type DELETE to confirm account deletion." });
+  }
+
+  try {
+    await ensureAuthSchema();
+
+    const { rows } = await pool.query(
+      "SELECT id, password_hash FROM users WHERE id = $1",
+      [req.user.id]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    const deleteResult = await pool.query("DELETE FROM users WHERE id = $1", [
+      req.user.id,
+    ]);
+
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json({ message: "Account deleted" });
+  } catch (err) {
+    console.error("Delete account error:", err);
+    return res.status(500).json({ error: "Failed to delete account" });
   }
 });
 
