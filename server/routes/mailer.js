@@ -20,6 +20,55 @@ function assertEmailProviderConfigured() {
   }
 }
 
+function normalizeFromField(fromRaw) {
+  const raw = String(fromRaw || "").trim();
+  const unquoted = raw.replace(/^['"]+|['"]+$/g, "").trim();
+
+  // Allow either "email@example.com" or "Name <email@example.com>"
+  const emailOnly = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const namedEmail = /^.+<\s*[^\s@]+@[^\s@]+\.[^\s@]+\s*>$/;
+
+  if (emailOnly.test(unquoted) || namedEmail.test(unquoted)) {
+    return unquoted;
+  }
+
+  return "";
+}
+
+function extractDisplayName(addressField) {
+  const raw = String(addressField || "").trim();
+  const unquoted = raw.replace(/^['"]+|['"]+$/g, "").trim();
+  const match = unquoted.match(/^(.*)<[^>]+>$/);
+  return (match ? match[1] : "").trim().replace(/^[\s"'`]+|[\s"'`]+$/g, "");
+}
+
+function resolveFromAddress() {
+  const primary = normalizeFromField(process.env.EMAIL_FROM);
+  const fallback = normalizeFromField(process.env.EMAIL_USER);
+  const hasResend = Boolean(process.env.RESEND_API_KEY);
+
+  if (!hasResend && primary && fallback) {
+    const primaryEmail = getFromAddress(primary);
+    const authEmail = getFromAddress(fallback);
+    if (primaryEmail && authEmail && primaryEmail !== authEmail) {
+      const name = extractDisplayName(primary) || extractDisplayName(fallback);
+      return name ? `${name} <${authEmail}>` : authEmail;
+    }
+  }
+
+  if (primary) return primary;
+  if (fallback) return fallback;
+  return "";
+}
+
+function assertValidFromAddress(from) {
+  if (!from) {
+    throw new Error(
+      "Invalid EMAIL_FROM/EMAIL_USER format. Use 'email@example.com' or 'Name <email@example.com>'."
+    );
+  }
+}
+
 function getFromAddress(from) {
   const match = from?.match(/<([^>]+)>/);
   return (match ? match[1] : from || "").trim().toLowerCase();
@@ -125,6 +174,7 @@ ${unsubscribeCopy}
 async function sendWithResend({
   to,
   from,
+  supportAddress,
   subject,
   text,
   html,
@@ -151,6 +201,7 @@ async function sendWithResend({
         "X-Entity-Ref-ID": entityRefId,
         "Message-ID": messageId,
         "X-List-Unsubscribe-URL": unsubscribeUrl,
+        ...(supportAddress ? { "Reply-To": supportAddress } : {}),
       },
     }),
   });
@@ -189,6 +240,7 @@ async function sendAppEmail({
         headers: {
           "X-Entity-Ref-ID": entityRefId,
           "Message-ID": messageId,
+          ...(supportAddress ? { "Reply-To": supportAddress } : {}),
         },
       }),
     });
@@ -217,9 +269,11 @@ async function sendAppEmail({
 export async function sendReminderEmail(to, name, options = {}) {
   assertEmailProviderConfigured();
 
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
   const supportAddress = process.env.EMAIL_SUPPORT || from;
-  const appBaseUrl = process.env.APP_URL || "https://gratuity-jar.vercel.app";
+  const supportEmail = getFromAddress(supportAddress) || getFromAddress(from);
+  const appBaseUrl = process.env.APP_URL || "https://thegratitudejar.net";
   const apiBaseUrl =
     process.env.API_URL || "https://gratuity-jar-api.onrender.com";
   const normalizedBaseUrl = appBaseUrl.replace(/\/$/, "");
@@ -234,8 +288,8 @@ export async function sendReminderEmail(to, name, options = {}) {
       )}`
     : null;
   const listUnsubscribe = unsubscribeUrl
-    ? `<mailto:${supportAddress}?subject=unsubscribe>, <${unsubscribeUrl}>`
-    : `<mailto:${supportAddress}?subject=unsubscribe>`;
+    ? `<mailto:${supportEmail}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportEmail}?subject=unsubscribe>`;
   const message = buildReminderMessage(
     name,
     appBaseUrl,
@@ -259,6 +313,7 @@ export async function sendReminderEmail(to, name, options = {}) {
     await sendWithResend({
       to,
       from,
+      supportAddress,
       subject: message.subject,
       text: message.text,
       html: message.html,
@@ -295,9 +350,10 @@ export async function sendCircleEntryNotificationEmail(
   to,
   { recipientName, circleName, circleId, actorName, isAnonymous }
 ) {
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
   const supportAddress = process.env.EMAIL_SUPPORT || from;
-  const appBaseUrl = (process.env.APP_URL || "https://gratuity-jar.vercel.app")
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net")
     .replace(/\/$/, "");
   const circleUrl = `${appBaseUrl}/circles/${circleId}`;
 
@@ -373,9 +429,10 @@ export async function sendCircleJoinNotificationEmail(
   to,
   { recipientName, circleName, circleId, joinerName }
 ) {
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
   const supportAddress = process.env.EMAIL_SUPPORT || from;
-  const appBaseUrl = (process.env.APP_URL || "https://gratuity-jar.vercel.app")
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net")
     .replace(/\/$/, "");
   const circleUrl = `${appBaseUrl}/circles/${circleId}`;
 
@@ -450,7 +507,8 @@ export async function sendAccountVerificationEmail(
   to,
   { recipientName, verifyUrl }
 ) {
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
   const supportAddress = process.env.EMAIL_SUPPORT || from;
   const fromAddress = getFromAddress(from);
   const fromDomain = getDomainFromEmail(fromAddress);
@@ -514,7 +572,8 @@ ${verifyUrl}
 }
 
 export async function sendPasswordResetEmail(to, { recipientName, resetUrl }) {
-  const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
   const supportAddress = process.env.EMAIL_SUPPORT || from;
   const fromAddress = getFromAddress(from);
   const fromDomain = getDomainFromEmail(fromAddress);
