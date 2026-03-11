@@ -60,6 +60,23 @@ async function handleUnsubscribe(req, res) {
       return res.status(400).send("Invalid unsubscribe token.");
     }
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_email_unsubscribes (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        unsubscribed_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await pool.query(
+      `
+      INSERT INTO user_email_unsubscribes (user_id, unsubscribed_at)
+      VALUES ($1, NOW())
+      ON CONFLICT (user_id)
+      DO UPDATE SET unsubscribed_at = EXCLUDED.unsubscribed_at
+      `,
+      [payload.uid]
+    );
+
     await pool.query(
       "UPDATE user_reminders SET active = false WHERE user_id = $1",
       [payload.uid]

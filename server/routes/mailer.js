@@ -171,6 +171,74 @@ ${unsubscribeCopy}
   };
 }
 
+function buildCircleCheckInMessage(
+  recipientName,
+  circleName,
+  circleUrl,
+  logoUrl,
+  unsubscribeUrl
+) {
+  const unsubscribeCopy = unsubscribeUrl || circleUrl;
+  const subject = `Hey! Your ${circleName} misses you!`;
+
+  return {
+    subject,
+    text: `Hi ${recipientName || "there"},
+
+Hey! Your ${circleName} misses you!
+
+Drop in and add an entry to check in with your circle.
+
+Open the circle:
+${circleUrl}
+
+Unsubscribe:
+${unsubscribeCopy}
+`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <div style="margin-bottom: 16px;">
+          <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+        </div>
+        <p>Hi ${recipientName || "there"},</p>
+        <p style="margin: 12px 0 10px 0; font-size: 18px; font-weight: 700;">
+          Hey! Your <span style="color:#2563eb;">${circleName}</span> misses you!
+        </p>
+        <p>Drop in and add an entry to check in with your circle.</p>
+        <p>
+          <a
+            href="${circleUrl}"
+            style="
+              display:inline-block;
+              padding:12px 28px;
+              min-width:140px;
+              border-radius:999px;
+              text-align:center;
+              font-weight:600;
+              color:#ffffff !important;
+              background:#2f80ed;
+              background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+              text-decoration:none !important;
+              border:1px solid #2f80ed;
+              box-shadow:0 8px 20px rgba(0,0,0,0.15);
+            "
+          >
+            Open Circle
+          </a>
+        </p>
+        <p style="font-size: 12px; color: #64748b;">
+          If the button does not display, use this link:
+          <a href="${circleUrl}" style="color:#2f80ed; text-decoration:underline;">${circleUrl}</a>
+        </p>
+        <p style="font-size: 12px; color: #64748b;">
+          If you no longer want reminders,
+          <a href="${unsubscribeCopy}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
+        </p>
+      </div>
+    `,
+  };
+}
+
 async function sendWithResend({
   to,
   from,
@@ -344,6 +412,99 @@ export async function sendReminderEmail(to, name, options = {}) {
   });
 
   console.log(`📧 Reminder sent to ${to}`);
+}
+
+export async function sendCircleCheckInReminderEmail(
+  to,
+  { recipientName, circleName, circleId, userId }
+) {
+  assertEmailProviderConfigured();
+
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const supportEmail = getFromAddress(supportAddress) || getFromAddress(from);
+
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net")
+    .replace(/\/$/, "");
+  const apiBaseUrl =
+    (process.env.API_URL || "https://gratuity-jar-api.onrender.com").replace(
+      /\/$/,
+      ""
+    );
+  const logoUrl = process.env.APP_LOGO_URL || `${appBaseUrl}/logo.png`;
+
+  const circleUrl = `${appBaseUrl}/circles/${circleId}`;
+
+  const unsubscribeToken = createUnsubscribeToken({ userId, email: to });
+  const unsubscribeUrl = unsubscribeToken
+    ? `${apiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(
+        unsubscribeToken
+      )}`
+    : null;
+  const listUnsubscribe = unsubscribeUrl
+    ? `<mailto:${supportEmail}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportEmail}?subject=unsubscribe>`;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+  const appDomain = getDomainFromUrl(appBaseUrl);
+  if (fromDomain && appDomain && fromDomain !== appDomain) {
+    console.warn(
+      `Email domain alignment warning: from domain "${fromDomain}" differs from app domain "${appDomain}".`
+    );
+  }
+
+  const message = buildCircleCheckInMessage(
+    recipientName,
+    circleName,
+    circleUrl,
+    logoUrl,
+    unsubscribeUrl
+  );
+
+  const day = new Date().toISOString().slice(0, 10);
+  const entityRefId = `circle-checkin-${circleId}-${userId || to}-${day}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendWithResend({
+      to,
+      from,
+      supportAddress,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      listUnsubscribe,
+      entityRefId,
+      messageId,
+      unsubscribeUrl,
+    });
+
+    console.log(`📧 Circle check-in sent via Resend to ${to}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    headers: {
+      "List-Unsubscribe": listUnsubscribe,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "X-Entity-Ref-ID": entityRefId,
+      ...(unsubscribeUrl ? { "X-List-Unsubscribe-URL": unsubscribeUrl } : {}),
+    },
+    messageId,
+  });
+
+  console.log(`📧 Circle check-in sent to ${to}`);
 }
 
 export async function sendCircleEntryNotificationEmail(

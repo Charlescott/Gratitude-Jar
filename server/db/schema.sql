@@ -71,3 +71,18 @@ CREATE TABLE circle_memberships (
   UNIQUE (circle_id, user_id)
 );
 
+-- Track sporadic (e.g. ~biweekly) circle check-in reminder emails
+CREATE TABLE circle_checkin_reminders (
+  id SERIAL PRIMARY KEY,
+  circle_id INTEGER REFERENCES circles(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  last_sent TIMESTAMPTZ,
+  UNIQUE (circle_id, user_id)
+);
+
+-- Global email unsubscribe (used by reminder + check-in emails)
+CREATE TABLE user_email_unsubscribes (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  unsubscribed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
