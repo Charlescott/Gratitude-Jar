@@ -2,6 +2,7 @@ import express from "express";
 import pool from "../db/index.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import {
   sendAccountVerificationEmail,
   sendPasswordResetEmail,
@@ -39,6 +40,14 @@ async function ensureAuthSchema() {
         `UPDATE users
          SET email_verified = TRUE
          WHERE email_verified IS NULL`
+      );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS password_reset_jti TEXT`
+      );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ`
       );
     })();
   }
@@ -200,10 +209,19 @@ router.post("/forgot-password", async (req, res) => {
     if (result.rows[0]) {
       const user = result.rows[0];
       const appBaseUrl = getAppBaseUrl(req);
+      const jti = crypto.randomUUID();
+
+      await pool.query(
+        `UPDATE users
+         SET password_reset_jti = $1,
+             password_reset_expires_at = NOW() + INTERVAL '30 minutes'
+         WHERE id = $2`,
+        [jti, user.id]
+      );
       const resetToken = jwt.sign(
         { typ: "reset_password", uid: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: "30m" }
+        { expiresIn: "30m", jwtid: jti }
       );
       const resetUrl = `${appBaseUrl}/reset-password?token=${encodeURIComponent(
         resetToken
@@ -248,10 +266,28 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
-      password_hash,
-      payload.uid,
-    ]);
+    const jti = payload?.jti || payload?.jwtid;
+    if (!jti) {
+      return res.status(400).json({ error: "Invalid reset token" });
+    }
+
+    const updateResult = await pool.query(
+      `UPDATE users
+       SET password_hash = $1,
+           password_reset_jti = NULL,
+           password_reset_expires_at = NULL
+       WHERE id = $2
+         AND password_reset_jti = $3
+         AND password_reset_expires_at > NOW()`,
+      [password_hash, payload.uid, jti]
+    );
+
+    if (updateResult.rowCount === 0) {
+      console.warn(
+        `Password reset rejected (expired or not latest): uid=${payload.uid}`
+      );
+      return res.status(400).json({ error: "Reset link is invalid or expired." });
+    }
 
     return res.json({ message: "Password updated successfully." });
   } catch (err) {
