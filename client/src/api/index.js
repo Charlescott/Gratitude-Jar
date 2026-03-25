@@ -79,6 +79,33 @@ function authHeaders(token) {
   };
 }
 
+export async function fetchMe(token) {
+  const res = await fetch(`${API}/auth/me`, {
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load user");
+  return result;
+}
+
+export async function fetchAdminOverview(token) {
+  const res = await fetch(`${API}/admin/overview`, {
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load admin overview");
+  return result;
+}
+
+export async function fetchAdminUsers(token, { limit = 200, offset = 0 } = {}) {
+  const res = await fetch(`${API}/admin/users?limit=${limit}&offset=${offset}`, {
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load users");
+  return result;
+}
+
 export async function fetchCircles(token) {
   const res = await fetch(`${API}/circles`, {
     headers: authHeaders(token),

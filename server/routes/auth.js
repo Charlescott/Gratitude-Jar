@@ -4,13 +4,13 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import requireUser from "../middleware/requireUser.js";
+import ensureUserSchema from "../db/ensureUserSchema.js";
 import {
   sendAccountVerificationEmail,
   sendPasswordResetEmail,
 } from "./mailer.js";
 
 const router = express.Router();
-let authSchemaReadyPromise = null;
 
 function getAppBaseUrl(req) {
   return (process.env.APP_URL || `${req.protocol}://${req.get("host")}`).replace(
@@ -31,29 +31,9 @@ function normalizeEmail(value = "") {
 }
 
 async function ensureAuthSchema() {
-  if (!authSchemaReadyPromise) {
-    authSchemaReadyPromise = (async () => {
-      await pool.query(
-        `ALTER TABLE users
-         ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE`
-      );
-      await pool.query(
-        `UPDATE users
-         SET email_verified = TRUE
-         WHERE email_verified IS NULL`
-      );
-      await pool.query(
-        `ALTER TABLE users
-         ADD COLUMN IF NOT EXISTS password_reset_jti TEXT`
-      );
-      await pool.query(
-        `ALTER TABLE users
-         ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ`
-      );
-    })();
-  }
-
-  await authSchemaReadyPromise;
+  await ensureUserSchema(pool, {
+    adminEmail: process.env.ADMIN_EMAIL || "scottfairdosi@yahoo.com",
+  });
 }
 
 router.post("/register", async (req, res) => {
@@ -138,6 +118,10 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    await pool.query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [
+      user.id,
+    ]);
+
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
@@ -150,11 +134,39 @@ router.post("/login", async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        is_admin: Boolean(user.is_admin),
       },
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
+  }
+});
+
+router.get("/me", requireUser, async (req, res) => {
+  try {
+    await ensureAuthSchema();
+    const { rows } = await pool.query(
+      `SELECT id, email, name, created_at, last_login_at, is_admin
+       FROM users
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    return res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      created_at: user.created_at,
+      last_login_at: user.last_login_at,
+      is_admin: Boolean(user.is_admin),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to load user" });
   }
 });
 

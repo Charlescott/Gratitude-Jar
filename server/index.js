@@ -8,6 +8,7 @@ import entriesRouter from "./routes/entries.js";
 import { scheduleReminders } from "./db/reminderCron.js";
 import remindersRouter from "./routes/reminders.js";
 import circlesRouter from "./routes/circles.js";
+import adminRouter from "./routes/admin.js";
 
 dotenv.config({
   path: process.env.NODE_ENV === "production" ? ".env" : ".env.local",
@@ -38,6 +39,7 @@ console.log("DATABASE_URL:", process.env.DATABASE_URL);
 app.use("/auth", authRouter);
 app.use("/questions", questionsRouter);
 app.use("/entries", entriesRouter);
+app.use("/admin", adminRouter);
 
 const PORT = process.env.PORT || 5000;
 

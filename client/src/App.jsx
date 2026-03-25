@@ -18,18 +18,32 @@ import RemindersPage from "./pages/Reminders";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import CirclesLayout from "./pages/circles/CirclesLayout";
 import JoinCircleLanding from "./pages/circles/JoinCircleLanding";
-import { joinCircle } from "./api";
+import AdminDashboard from "./pages/AdminDashboard";
+import { fetchMe, joinCircle } from "./api";
 
-function AppRoutes({ token, setToken, theme, setTheme }) {
+function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = Boolean(token);
 
-  async function handleLogin(newToken) {
+  async function handleLogin(newToken, newUser) {
     setToken(newToken);
     localStorage.setItem("token", newToken);
+    if (newUser) {
+      setUser(newUser);
+      localStorage.setItem("user", JSON.stringify(newUser));
+    } else {
+      try {
+        const me = await fetchMe(newToken);
+        setUser(me);
+        localStorage.setItem("user", JSON.stringify(me));
+      } catch {
+        // If this fails, server will still enforce admin-only routes.
+      }
+    }
     const pendingKey = localStorage.getItem("pending_circle_key");
 
     if (pendingKey) {
@@ -39,7 +53,7 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         localStorage.setItem("show_explore_prompt", "true");
         navigate(`/circles/${circle.id}`);
         return;
-      } catch (err) {
+      } catch {
         localStorage.removeItem("pending_circle_key");
         navigate("/circles");
         return;
@@ -52,6 +66,8 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
   function handleLogout() {
     setToken("");
     localStorage.removeItem("token");
+    setUser(null);
+    localStorage.removeItem("user");
     navigate("/");
   }
 
@@ -71,6 +87,7 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
       {showHeader && (
         <Header
           token={token}
+          user={user}
           onLogout={handleLogout}
           theme={theme}
           setTheme={setTheme}
@@ -129,6 +146,14 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute token={token} user={user}>
+              <AdminDashboard token={token} />
+            </AdminRoute>
+          }
+        />
 
         <Route
           path="/circles/:id"
@@ -145,6 +170,14 @@ function AppRoutes({ token, setToken, theme, setTheme }) {
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   useEffect(() => {
@@ -152,11 +185,32 @@ export default function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    let canceled = false;
+    async function load() {
+      if (!token) return;
+      try {
+        const me = await fetchMe(token);
+        if (canceled) return;
+        setUser(me);
+        localStorage.setItem("user", JSON.stringify(me));
+      } catch {
+        // Token might be expired; let existing app flows handle it.
+      }
+    }
+    load();
+    return () => {
+      canceled = true;
+    };
+  }, [token]);
+
   return (
     <Router>
       <AppRoutes
         token={token}
         setToken={setToken}
+        user={user}
+        setUser={setUser}
         theme={theme}
         setTheme={setTheme}
       />

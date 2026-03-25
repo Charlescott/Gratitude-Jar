@@ -3,7 +3,9 @@ CREATE TABLE users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     name TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    is_admin BOOLEAN DEFAULT FALSE,
+    last_login_at TIMESTAMPTZ
 );
 
 CREATE TABLE gratitude_entries (

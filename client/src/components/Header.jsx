@@ -2,11 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import logo from "../assets/logo.png";
 
-export default function Header({ token, onLogout, theme, setTheme }) {
+export default function Header({ token, user, onLogout, theme, setTheme }) {
   const location = useLocation();
   const isHome = location.pathname === "/";
   const isCircles = location.pathname.startsWith("/circles");
   const isAuthenticated = Boolean(token);
+  const isAdmin = Boolean(user?.is_admin);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
@@ -160,6 +161,16 @@ export default function Header({ token, onLogout, theme, setTheme }) {
               >
                 Circles
               </Link>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="dropdown-item"
+                  onClick={() => setProfileOpen(false)}
+                  style={{ padding: "0.5rem 1rem" }}
+                >
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={() => {
                   setProfileOpen(false);

@@ -29,7 +29,7 @@ export default function AuthForm({ onLogin }) {
           });
 
       if (isLogin) {
-        onLogin(result.token);
+        onLogin(result.token, result.user);
         return;
       }
 
