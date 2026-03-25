@@ -97,12 +97,29 @@ export async function fetchAdminOverview(token) {
   return result;
 }
 
-export async function fetchAdminUsers(token, { limit = 200, offset = 0 } = {}) {
-  const res = await fetch(`${API}/admin/users?limit=${limit}&offset=${offset}`, {
+export async function fetchAdminUsers(
+  token,
+  { limit = 200, offset = 0, orderBy = "created_at", direction = "desc" } = {}
+) {
+  const res = await fetch(
+    `${API}/admin/users?limit=${limit}&offset=${offset}&orderBy=${encodeURIComponent(
+      orderBy
+    )}&direction=${encodeURIComponent(direction)}`,
+    {
+      headers: authHeaders(token),
+    }
+  );
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load users");
+  return result;
+}
+
+export async function fetchAdminCircles(token, { limit = 100, offset = 0 } = {}) {
+  const res = await fetch(`${API}/admin/circles?limit=${limit}&offset=${offset}`, {
     headers: authHeaders(token),
   });
   const result = await res.json();
-  if (!res.ok) throw new Error(result.error || "Failed to load users");
+  if (!res.ok) throw new Error(result.error || "Failed to load circles");
   return result;
 }
 

@@ -128,20 +128,86 @@ router.get("/users", requireAdmin, async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit || "200", 10), 1), 500);
     const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
 
+    const orderByRaw = String(req.query.orderBy || "created_at");
+    const directionRaw = String(req.query.direction || "desc").toLowerCase();
+    const orderBy =
+      orderByRaw === "last_login_at" ? "last_login_at" : "created_at";
+    const direction = directionRaw === "asc" ? "ASC" : "DESC";
+
+    const orderSql =
+      orderBy === "last_login_at"
+        ? `ORDER BY last_login_at ${direction} NULLS LAST, created_at DESC`
+        : `ORDER BY created_at ${direction}`;
+
     const { rows } = await pool.query(
       `SELECT id, email, name, created_at, last_login_at
        FROM users
-       ORDER BY created_at ASC
+       ${orderSql}
        LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
-    return res.json({ limit, offset, users: rows });
+    return res.json({ limit, offset, orderBy, direction: direction.toLowerCase(), users: rows });
   } catch (err) {
     console.error("Admin users error:", err);
     return res.status(500).json({ error: "Failed to load users" });
   }
 });
 
-export default router;
+router.get("/circles", requireAdmin, async (req, res) => {
+  try {
+    await ensureSchema();
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "100", 10), 1), 200);
+    const offset = Math.max(parseInt(req.query.offset || "0", 10), 0);
 
+    const { rows } = await pool.query(
+      `SELECT
+         c.id,
+         c.name,
+         c.key,
+         c.created_at,
+         jsonb_build_object(
+           'id', owner.id,
+           'email', owner.email,
+           'name', owner.name
+         ) AS owner,
+         COALESCE(
+           jsonb_agg(
+             jsonb_build_object(
+               'id', u.id,
+               'email', u.email,
+               'name', u.name,
+               'joined_at', cm.joined_at
+             )
+             ORDER BY cm.joined_at ASC
+           ) FILTER (WHERE u.id IS NOT NULL),
+           '[]'::jsonb
+         ) AS members
+       FROM circles c
+       LEFT JOIN users owner ON owner.id = c.owner_id
+       LEFT JOIN circle_memberships cm ON cm.circle_id = c.id
+       LEFT JOIN users u ON u.id = cm.user_id
+       GROUP BY c.id, owner.id
+       ORDER BY c.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    const circles = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      key: row.key,
+      created_at: row.created_at,
+      owner: row.owner,
+      members: row.members,
+      member_count: Array.isArray(row.members) ? row.members.length : 0,
+    }));
+
+    return res.json({ limit, offset, circles });
+  } catch (err) {
+    console.error("Admin circles error:", err);
+    return res.status(500).json({ error: "Failed to load circles" });
+  }
+});
+
+export default router;

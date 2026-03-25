@@ -22,6 +22,8 @@ import AdminRoute from "./components/AdminRoute";
 import CirclesLayout from "./pages/circles/CirclesLayout";
 import JoinCircleLanding from "./pages/circles/JoinCircleLanding";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCircles from "./pages/admin/AdminCircles";
 import { fetchMe, joinCircle } from "./api";
 
 function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
@@ -151,6 +153,22 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
           element={
             <AdminRoute token={token} user={user}>
               <AdminDashboard token={token} />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute token={token} user={user}>
+              <AdminUsers token={token} />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/circles"
+          element={
+            <AdminRoute token={token} user={user}>
+              <AdminCircles token={token} />
             </AdminRoute>
           }
         />

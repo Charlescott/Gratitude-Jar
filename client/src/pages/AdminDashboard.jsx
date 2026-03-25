@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchAdminOverview, fetchAdminUsers } from "../api";
-
-function formatDateTime(value) {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return String(value);
-  }
-}
+import { Link } from "react-router-dom";
+import { fetchAdminOverview } from "../api";
 
 function StatCard({ label, value }) {
   return (
@@ -21,29 +13,37 @@ function StatCard({ label, value }) {
   );
 }
 
+function StatLinkCard({ label, value, to }) {
+  return (
+    <Link
+      to={to}
+      className="entry-card"
+      style={{
+        padding: "1rem",
+        minWidth: 180,
+        textDecoration: "none",
+        color: "inherit",
+        display: "block",
+        border: "1px solid rgba(15, 23, 42, 0.12)",
+      }}
+    >
+      <div style={{ opacity: 0.8, fontSize: "0.9rem" }}>{label}</div>
+      <div style={{ fontSize: "1.6rem", fontWeight: 700, marginTop: 6 }}>
+        {value}
+      </div>
+      <div style={{ marginTop: 8, opacity: 0.8, fontSize: "0.9rem" }}>
+        View →
+      </div>
+    </Link>
+  );
+}
+
 export default function AdminDashboard({ token }) {
   const [overview, setOverview] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [usersOffset, setUsersOffset] = useState(0);
-  const [usersLoading, setUsersLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const dailyRows = useMemo(() => overview?.daily || [], [overview]);
-
-  async function loadUsers(nextOffset = 0, append = false) {
-    setUsersLoading(true);
-    setError("");
-    try {
-      const result = await fetchAdminUsers(token, { limit: 200, offset: nextOffset });
-      setUsersOffset(result.offset + result.users.length);
-      setUsers((prev) => (append ? [...prev, ...result.users] : result.users));
-    } catch (err) {
-      setError(err.message || "Failed to load users");
-    } finally {
-      setUsersLoading(false);
-    }
-  }
 
   useEffect(() => {
     let canceled = false;
@@ -54,7 +54,6 @@ export default function AdminDashboard({ token }) {
       try {
         const data = await fetchAdminOverview(token);
         if (!canceled) setOverview(data);
-        if (!canceled) await loadUsers(0, false);
       } catch (err) {
         if (!canceled) setError(err.message || "Failed to load admin data");
       } finally {
@@ -98,7 +97,6 @@ export default function AdminDashboard({ token }) {
             try {
               const data = await fetchAdminOverview(token);
               setOverview(data);
-              await loadUsers(0, false);
             } catch (err) {
               setError(err.message || "Failed to refresh");
             } finally {
@@ -118,16 +116,27 @@ export default function AdminDashboard({ token }) {
           marginTop: "1rem",
         }}
       >
-        <StatCard label="Total Users" value={overview?.totals?.users ?? "—"} />
-        <StatCard label="Total Circles" value={overview?.totals?.circles ?? "—"} />
+        <StatLinkCard
+          label="Total Users"
+          value={overview?.totals?.users ?? "—"}
+          to="/admin/users"
+        />
+        <StatLinkCard
+          label="Total Circles"
+          value={overview?.totals?.circles ?? "—"}
+          to="/admin/circles"
+        />
         <StatCard label="Total Entries" value={overview?.totals?.entries ?? "—"} />
-        <StatCard label="Signed Up Today (UTC)" value={overview?.today?.users_signed_up ?? "—"} />
-        <StatCard label="Signed In Today (UTC)" value={overview?.today?.users_signed_in ?? "—"} />
-        <StatCard label="Entries Today (UTC)" value={overview?.today?.entries ?? "—"} />
+        <StatCard label="Signed Up Today" value={overview?.today?.users_signed_up ?? "—"} />
+        <StatCard label="Signed In Today" value={overview?.today?.users_signed_in ?? "—"} />
+        <StatCard label="Entries Today" value={overview?.today?.entries ?? "—"} />
       </div>
 
       <div className="entry-card" style={{ marginTop: "1rem" }}>
-        <h2 style={{ marginTop: 0 }}>Last 14 Days (UTC)</h2>
+        <h2 style={{ marginTop: 0 }}>Last 14 Days</h2>
+        <div style={{ opacity: 0.75, fontSize: "0.9rem", marginTop: "-0.25rem" }}>
+          Daily boundaries are calculated in UTC.
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -158,54 +167,6 @@ export default function AdminDashboard({ token }) {
           </table>
         </div>
       </div>
-
-      <div className="entry-card" style={{ marginTop: "1rem" }}>
-        <h2 style={{ marginTop: 0 }}>Users (Chronological)</h2>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", opacity: 0.85 }}>
-                <th style={{ padding: "0.5rem" }}>Created</th>
-                <th style={{ padding: "0.5rem" }}>Email</th>
-                <th style={{ padding: "0.5rem" }}>Name</th>
-                <th style={{ padding: "0.5rem" }}>Last Login</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} style={{ borderTop: "1px solid rgba(15, 23, 42, 0.12)" }}>
-                  <td style={{ padding: "0.5rem", whiteSpace: "nowrap" }}>
-                    {formatDateTime(u.created_at)}
-                  </td>
-                  <td style={{ padding: "0.5rem" }}>{u.email}</td>
-                  <td style={{ padding: "0.5rem" }}>{u.name || "—"}</td>
-                  <td style={{ padding: "0.5rem", whiteSpace: "nowrap" }}>
-                    {formatDateTime(u.last_login_at)}
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td style={{ padding: "0.5rem" }} colSpan={4}>
-                    No users
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: "0.75rem" }}>
-          <button
-            className="btn btn-secondary"
-            disabled={usersLoading}
-            onClick={() => loadUsers(usersOffset, true)}
-          >
-            {usersLoading ? "Loading…" : "Load more"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
-
