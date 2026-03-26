@@ -189,8 +189,12 @@ export async function deleteCircle(token, id) {
   return res.json();
 }
 
-export async function fetchCircleEntries(token, id) {
-  const res = await fetch(`${API}/circles/${id}/entries`, {
+export async function fetchCircleEntries(token, id, { limit = 50, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (offset != null) params.set("offset", String(offset));
+
+  const res = await fetch(`${API}/circles/${id}/entries?${params.toString()}`, {
     headers: authHeaders(token),
   });
 

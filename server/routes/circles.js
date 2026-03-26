@@ -368,6 +368,18 @@ router.get("/:id/entries", requireUser, async (req, res) => {
   const { id } = req.params;
 
   try {
+    const limitRaw = req.query.limit;
+    const offsetRaw = req.query.offset;
+    const requestedLimit = limitRaw == null ? 50 : Number(limitRaw);
+    const requestedOffset = offsetRaw == null ? 0 : Number(offsetRaw);
+
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(200, Math.trunc(requestedLimit)))
+      : 50;
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(0, Math.min(100000, Math.trunc(requestedOffset)))
+      : 0;
+
     const membership = await pool.query(
       `
       SELECT 1 FROM circle_memberships
@@ -390,9 +402,10 @@ router.get("/:id/entries", requireUser, async (req, res) => {
         FROM gratitude_entries g
         JOIN users u ON g.user_id = u.id
         WHERE g.circle_id = $1
-        ORDER BY g.created_at DESC
+        ORDER BY g.created_at DESC, g.id DESC
+        LIMIT $3 OFFSET $4
         `,
-        [id, req.user.id]
+        [id, req.user.id, limit + 1, offset]
       );
     } catch (queryErr) {
       // Local DBs without is_anonymous should still return entries.
@@ -407,13 +420,17 @@ router.get("/:id/entries", requireUser, async (req, res) => {
         FROM gratitude_entries g
         JOIN users u ON g.user_id = u.id
         WHERE g.circle_id = $1
-        ORDER BY g.created_at DESC
+        ORDER BY g.created_at DESC, g.id DESC
+        LIMIT $3 OFFSET $4
         `,
-        [id, req.user.id]
+        [id, req.user.id, limit + 1, offset]
       );
     }
 
-    res.json(result.rows);
+    const rows = result.rows || [];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    res.json({ items, limit, offset, hasMore });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch entries" });

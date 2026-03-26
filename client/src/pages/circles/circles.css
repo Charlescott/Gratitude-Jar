@@ -486,12 +486,13 @@ textarea:focus {
   padding-top: 0;
 }
 
-.circle-detail.has-entries {
+.circle-detail.has-entries,
+.circle-detail.loading-entries {
   padding-top: 2.85rem;
 }
 
 .circle-header {
-  --header-shift: -24px;
+  --header-shift: -39px;
   position: relative;
   z-index: 3;
   overflow: visible;
@@ -659,6 +660,7 @@ textarea:focus {
   height: min(520px, 90vw);
   margin: 0 auto;
   z-index: 1;
+  touch-action: none;
 }
 
 .circle-entry-card {
@@ -675,8 +677,21 @@ textarea:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   text-align: center;
   color: var(--text-color);
-  cursor: pointer;
+  cursor: grab;
   transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+
+.circle-entry-card.dragging,
+.circle-entry-card.sliding {
+  cursor: grabbing;
+  transition: box-shadow 0.16s ease, background-color 0.16s ease;
+}
+
+.circle-entry-card.dragging {
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.14);
 }
 
 .circle-detail.entering .circle-entry-card {
@@ -777,7 +792,8 @@ textarea:focus {
   animation: circleHeaderReveal 1200ms ease forwards;
 }
 
-.circle-detail.has-entries .circle-actions {
+.circle-detail.has-entries .circle-actions,
+.circle-detail.loading-entries .circle-actions {
   margin-top: 7.1rem;
 }
 
@@ -1045,7 +1061,8 @@ body.circle-detail-view .circle-gradient-wrapper {
     row-gap: 0.9rem;
   }
 
-  .circle-detail.has-entries {
+  .circle-detail.has-entries,
+  .circle-detail.loading-entries {
     padding-top: 0.95rem;
   }
 
@@ -1079,7 +1096,8 @@ body.circle-detail-view .circle-gradient-wrapper {
     row-gap: 0.7rem;
   }
 
-  .circle-detail.has-entries .circle-actions {
+  .circle-detail.has-entries .circle-actions,
+  .circle-detail.loading-entries .circle-actions {
     margin-top: 1.65rem;
   }
 

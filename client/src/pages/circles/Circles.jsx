@@ -12,6 +12,7 @@ export default function CirclesPage({ token }) {
   const [circleId, setCircleId] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
   const [myCircles, setMyCircles] = useState([]); // Store created circles
+  const [isLoadingCircles, setIsLoadingCircles] = useState(true);
   const [isShrinking, setIsShrinking] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [animate, setAnimate] = useState(true);
@@ -34,16 +35,21 @@ export default function CirclesPage({ token }) {
 
   useEffect(() => {
     async function loadCircles() {
+      setIsLoadingCircles(true);
       try {
         const circles = await fetchCircles(token);
         setMyCircles(circles);
       } catch (err) {
         console.error("Failed to load circles", err);
+      } finally {
+        setIsLoadingCircles(false);
       }
     }
 
     if (token) {
       loadCircles();
+    } else {
+      setIsLoadingCircles(false);
     }
   }, [token]);
 
@@ -131,10 +137,16 @@ export default function CirclesPage({ token }) {
           className={`circles-content ${showContent && showWelcome ? "show" : ""}`}
         >
           <h1 className="circles-title">
-            {myCircles.length > 0 ? "My Circles" : "Circles"}
+            {isLoadingCircles ? "Circles" : myCircles.length > 0 ? "My Circles" : "Circles"}
           </h1>
 
-          {myCircles.length === 0 && (
+          {isLoadingCircles && (
+            <p className="circles-description circles-description-intro">
+              Loading your circles…
+            </p>
+          )}
+
+          {!isLoadingCircles && myCircles.length === 0 && (
             <p className="circles-description circles-description-intro">
               Circles are shared spaces for quiet gratitude. Create one for
               people you trust, and reflect together without noise, pressure,
@@ -143,7 +155,7 @@ export default function CirclesPage({ token }) {
           )}
 
           {/* Display existing circles */}
-          {myCircles.length > 0 && (
+          {!isLoadingCircles && myCircles.length > 0 && (
             <div className="my-circles-container">
               <div className="circles-grid">
                 {myCircles.map((circle, index) => (

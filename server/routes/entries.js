@@ -6,11 +6,26 @@ const router = express.Router();
 
 router.get("/", requireUser, async (req, res) => {
   try {
+    const limitRaw = req.query.limit;
+    const offsetRaw = req.query.offset;
+    const requestedLimit = limitRaw == null ? 50 : Number(limitRaw);
+    const requestedOffset = offsetRaw == null ? 0 : Number(offsetRaw);
+
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(200, Math.trunc(requestedLimit)))
+      : 50;
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(0, Math.min(100000, Math.trunc(requestedOffset)))
+      : 0;
+
     const result = await pool.query(
-      "SELECT * FROM gratitude_entries WHERE user_id = $1 ORDER BY created_at DESC",
-      [req.user.id]
+      "SELECT * FROM gratitude_entries WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3",
+      [req.user.id, limit + 1, offset]
     );
-    res.json(result.rows);
+    const rows = result.rows || [];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    res.json({ items, limit, offset, hasMore });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Failed to fetch entries" });

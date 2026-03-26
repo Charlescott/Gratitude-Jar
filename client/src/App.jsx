@@ -172,15 +172,6 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
             </AdminRoute>
           }
         />
-
-        <Route
-          path="/circles/:id"
-          element={
-            <ProtectedRoute token={token}>
-              <CircleDetail token={token} />
-            </ProtectedRoute>
-          }
-        />
       </Routes>
     </>
   );

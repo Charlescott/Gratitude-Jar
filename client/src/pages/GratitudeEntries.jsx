@@ -5,11 +5,15 @@ export default function GratitudeEntries({ token }) {
   const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
   const [error, setError] = useState(null);
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const PAGE_SIZE = 50;
 
   const MOOD_MAP = {
     happy: "😊",
@@ -54,6 +58,7 @@ export default function GratitudeEntries({ token }) {
 
       const newEntry = await res.json();
       setEntries((prev) => [{ ...newEntry, show: false }, ...prev]);
+      setOffset((prev) => prev + 1);
       setContent("");
       setMood("");
 
@@ -98,6 +103,8 @@ export default function GratitudeEntries({ token }) {
     if (!token || !API) {
       setEntries([]);
       setLoading(false);
+      setHasMore(false);
+      setOffset(0);
       return;
     }
 
@@ -105,17 +112,28 @@ export default function GratitudeEntries({ token }) {
     setLoading(true);
     setError(null);
     setEntries([]);
+    setHasMore(false);
+    setOffset(0);
 
     async function fetchEntries() {
       try {
-        const res = await fetch(`${API}/entries`, {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          offset: "0",
+        });
+
+        const res = await fetch(`${API}/entries?${params.toString()}`, {
           cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed to fetch entries");
-        const data = await res.json();
+        const payload = await res.json();
         if (!isActive) return;
-        setEntries(data.map((entry) => ({ ...entry, show: true })));
+        const items = Array.isArray(payload) ? payload : payload.items || [];
+        const limit = Number.isFinite(payload?.limit) ? payload.limit : items.length;
+        setEntries(items.map((entry) => ({ ...entry, show: true })));
+        setHasMore(Boolean(payload?.hasMore));
+        setOffset(limit);
       } catch (err) {
         if (!isActive) return;
         setError(err.message);
@@ -130,6 +148,38 @@ export default function GratitudeEntries({ token }) {
       isActive = false;
     };
   }, [API, token]);
+
+  async function handleLoadMore() {
+    if (!token || !API || loadingMore || loading || !hasMore) return;
+
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(offset),
+      });
+      const res = await fetch(`${API}/entries?${params.toString()}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch more entries");
+      const payload = await res.json();
+      const items = Array.isArray(payload) ? payload : payload.items || [];
+      const limit = Number.isFinite(payload?.limit) ? payload.limit : items.length;
+
+      setEntries((prev) => [
+        ...prev,
+        ...items.map((entry) => ({ ...entry, show: true })),
+      ]);
+      setHasMore(Boolean(payload?.hasMore));
+      setOffset((prev) => prev + limit);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
@@ -191,28 +241,42 @@ export default function GratitudeEntries({ token }) {
         {entries.length === 0 ? (
           <p>No entries yet. Add one!</p>
         ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {entries.map((entry) => (
-              <li
-                key={entry.id}
-                className={`entry-item ${entry.show ? "show" : ""}`}
-              >
-                <div className="entry-item-content">
-                  <strong>{new Date(entry.created_at).toLocaleDateString()}:</strong>{" "}
-                  {entry.content}
-                  {entry.mood && (
-                    <span className="entry-mood">{MOOD_MAP[entry.mood]}</span>
-                  )}
-                </div>
-                <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(entry.id)}
+          <>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {entries.map((entry) => (
+                <li
+                  key={entry.id}
+                  className={`entry-item ${entry.show ? "show" : ""}`}
                 >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <div className="entry-item-content">
+                    <strong>{new Date(entry.created_at).toLocaleDateString()}:</strong>{" "}
+                    {entry.content}
+                    {entry.mood && (
+                      <span className="entry-mood">{MOOD_MAP[entry.mood]}</span>
+                    )}
+                  </div>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDelete(entry.id)}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            {hasMore && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                style={{ marginTop: "1rem" }}
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
