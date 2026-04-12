@@ -125,6 +125,7 @@ export async function fetchAdminCircles(token, { limit = 100, offset = 0 } = {})
 
 export async function fetchCircles(token) {
   const res = await fetch(`${API}/circles`, {
+    cache: "no-store",
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error("Failed to load circles");
@@ -153,6 +154,7 @@ export async function joinCircle(token, key) {
 
 export async function fetchCircleById(token, id) {
   const res = await fetch(`${API}/circles/${id}`, {
+    cache: "no-store",
     headers: authHeaders(token),
   });
 
@@ -162,6 +164,7 @@ export async function fetchCircleById(token, id) {
 
 export async function fetchCircleMembers(token, id) {
   const res = await fetch(`${API}/circles/${id}/members`, {
+    cache: "no-store",
     headers: authHeaders(token),
   });
 
@@ -195,6 +198,7 @@ export async function fetchCircleEntries(token, id, { limit = 50, offset = 0 } =
   if (offset != null) params.set("offset", String(offset));
 
   const res = await fetch(`${API}/circles/${id}/entries?${params.toString()}`, {
+    cache: "no-store",
     headers: authHeaders(token),
   });
 

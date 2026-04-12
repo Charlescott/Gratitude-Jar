@@ -4,6 +4,38 @@ import { useNavigate } from "react-router-dom";
 
 import { fetchCircles, createCircle, joinCircle } from "../../api";
 
+// Module-scoped cache so re-mounting this page (e.g. after returning from a
+// circle detail) can paint the previously-known list immediately while the
+// background refetch runs — avoids flashing the "no circles yet" empty state.
+let circlesCache = null;
+
+export function clearCirclesCache() {
+  circlesCache = null;
+}
+
+// Same idea for individual circle detail pages, keyed by circle id, so
+// navigating into a circle can paint the previously-known circle/entries/
+// members immediately while a background refetch runs.
+const circleDetailCache = new Map();
+
+export function getCircleDetailCache(id) {
+  return circleDetailCache.get(String(id));
+}
+
+export function patchCircleDetailCache(id, partial) {
+  const key = String(id);
+  const existing = circleDetailCache.get(key) || {};
+  circleDetailCache.set(key, { ...existing, ...partial });
+}
+
+export function clearCircleDetailCache(id) {
+  if (id == null) {
+    circleDetailCache.clear();
+  } else {
+    circleDetailCache.delete(String(id));
+  }
+}
+
 export default function CirclesPage({ token }) {
   const [showContent, setShowContent] = useState(false);
   const [view, setView] = useState("welcome"); // 'welcome', 'create', 'join'
@@ -11,8 +43,8 @@ export default function CirclesPage({ token }) {
   const [circleKey, setCircleKey] = useState("");
   const [circleId, setCircleId] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
-  const [myCircles, setMyCircles] = useState([]); // Store created circles
-  const [isLoadingCircles, setIsLoadingCircles] = useState(true);
+  const [myCircles, setMyCircles] = useState(() => circlesCache ?? []);
+  const [isLoadingCircles, setIsLoadingCircles] = useState(circlesCache === null);
   const [isShrinking, setIsShrinking] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [animate, setAnimate] = useState(true);
@@ -34,15 +66,19 @@ export default function CirclesPage({ token }) {
   }, [view]);
 
   useEffect(() => {
+    let canceled = false;
     async function loadCircles() {
-      setIsLoadingCircles(true);
+      const hadCache = circlesCache !== null;
+      if (!hadCache) setIsLoadingCircles(true);
       try {
         const circles = await fetchCircles(token);
+        if (canceled) return;
+        circlesCache = circles;
         setMyCircles(circles);
       } catch (err) {
         console.error("Failed to load circles", err);
       } finally {
-        setIsLoadingCircles(false);
+        if (!canceled && !hadCache) setIsLoadingCircles(false);
       }
     }
 
@@ -51,6 +87,10 @@ export default function CirclesPage({ token }) {
     } else {
       setIsLoadingCircles(false);
     }
+
+    return () => {
+      canceled = true;
+    };
   }, [token]);
 
   useEffect(() => {
@@ -97,7 +137,27 @@ export default function CirclesPage({ token }) {
     try {
       const circle = await createCircle(token, name);
 
-      setMyCircles((prev) => [circle, ...prev]);
+      setMyCircles((prev) => {
+        const next = [circle, ...prev];
+        circlesCache = next;
+        return next;
+      });
+      // Seed the circle detail cache so "Share Gratitude" navigates into a
+      // fully-populated page (known empty entries, known owner/invite) rather
+      // than flashing a Loading state and then jumping to the no-entries
+      // layout.
+      patchCircleDetailCache(circle.id, {
+        circle: {
+          ...circle,
+          member_count: 1,
+          is_owner: true,
+          invite_key: circle.key,
+        },
+        entries: [],
+        hasMore: false,
+        offset: 0,
+        members: [],
+      });
       setCircleName(circle.name);
       setCircleKey(circle.key);
       setCircleId(circle.id);
@@ -121,12 +181,10 @@ export default function CirclesPage({ token }) {
   };
 
   const handleCircleClick = (circle) => {
+    // Navigate only — previously we also updated local state here, but those
+    // setters raced with the unmount and flashed the "create" view (with the
+    // invite-key celebration styling) for a frame before CircleDetail mounted.
     navigate(`/circles/${circle.id}`);
-    setCircleName(circle.name);
-    setCircleKey(circle.key);
-    setCircleId(circle.id);
-    setInviteLink(circle.link);
-    setView("create");
   };
 
   return (
@@ -388,7 +446,11 @@ export default function CirclesPage({ token }) {
                 onClick={async () => {
                   try {
                     const circle = await joinCircle(token, circleKey);
-                    setMyCircles((prev) => [circle, ...prev]);
+                    setMyCircles((prev) => {
+                      const next = [circle, ...prev];
+                      circlesCache = next;
+                      return next;
+                    });
                     setView("welcome");
                     setCircleKey("");
                   } catch (err) {

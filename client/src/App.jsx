@@ -30,6 +30,41 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = Boolean(token);
+  const [authChecked, setAuthChecked] = useState(!token);
+
+  useEffect(() => {
+    let canceled = false;
+    async function verifySession() {
+      if (!token) {
+        setAuthChecked(true);
+        return;
+      }
+      try {
+        const me = await fetchMe(token);
+        if (canceled) return;
+        setUser(me);
+        localStorage.setItem("user", JSON.stringify(me));
+      } catch {
+        if (canceled) return;
+        setToken("");
+        setUser(null);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        const protectedPaths = ["/entries", "/reminders", "/circles", "/admin"];
+        if (protectedPaths.some((p) => location.pathname.startsWith(p))) {
+          navigate("/", { replace: true });
+        }
+      } finally {
+        if (!canceled) setAuthChecked(true);
+      }
+    }
+    verifySession();
+    return () => {
+      canceled = true;
+    };
+    // Run only on initial mount; login/logout flows manage state directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleLogin(newToken, newUser) {
     setToken(newToken);
@@ -83,6 +118,10 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
   // get current path to conditionally render Header
   const currentPath = location.pathname;
   const showHeader = currentPath !== "/";
+
+  if (!authChecked) {
+    return null;
+  }
 
   return (
     <>
@@ -193,25 +232,6 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
-
-  useEffect(() => {
-    let canceled = false;
-    async function load() {
-      if (!token) return;
-      try {
-        const me = await fetchMe(token);
-        if (canceled) return;
-        setUser(me);
-        localStorage.setItem("user", JSON.stringify(me));
-      } catch {
-        // Token might be expired; let existing app flows handle it.
-      }
-    }
-    load();
-    return () => {
-      canceled = true;
-    };
-  }, [token]);
 
   return (
     <Router>

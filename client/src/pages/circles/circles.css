@@ -487,7 +487,8 @@ textarea:focus {
 }
 
 .circle-detail.has-entries,
-.circle-detail.loading-entries {
+.circle-detail.loading-entries,
+.circle-detail.no-entries {
   padding-top: 2.85rem;
 }
 
@@ -582,6 +583,12 @@ textarea:focus {
   margin-top: 0.5rem;
   margin-bottom: 1rem;
   width: 100%;
+  /* Reserve the space the entries circle will occupy so loading /
+     no-entries layouts don't visibly jump when data lands. */
+  min-height: min(640px, 92vw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .circle-archive {
@@ -656,8 +663,8 @@ textarea:focus {
 
 .entries-list {
   position: relative;
-  width: min(520px, 90vw);
-  height: min(520px, 90vw);
+  width: min(640px, 92vw);
+  height: min(640px, 92vw);
   margin: 0 auto;
   z-index: 1;
   touch-action: none;
@@ -774,7 +781,7 @@ textarea:focus {
 }
 
 .circle-actions {
-  margin-top: 5.25rem;
+  margin-top: 1.5rem;
   width: 100%;
   display: grid;
   row-gap: 0.9rem;
@@ -793,8 +800,9 @@ textarea:focus {
 }
 
 .circle-detail.has-entries .circle-actions,
-.circle-detail.loading-entries .circle-actions {
-  margin-top: 7.1rem;
+.circle-detail.loading-entries .circle-actions,
+.circle-detail.no-entries .circle-actions {
+  margin-top: 1.5rem;
 }
 
 .circle-anon-toggle {
@@ -845,7 +853,10 @@ textarea:focus {
 }
 
 body.circle-detail-view .circles-page {
-  justify-content: flex-start;
+  /* Vertically center the detail content so the entries circle lines up
+     with the fixed gradient ring at 47.5vh and the page takes up space
+     on the lower side of the viewport instead of hugging the top. */
+  justify-content: center;
   transform: none !important;
 }
 
@@ -1062,8 +1073,13 @@ body.circle-detail-view .circle-gradient-wrapper {
   }
 
   .circle-detail.has-entries,
-  .circle-detail.loading-entries {
+  .circle-detail.loading-entries,
+  .circle-detail.no-entries {
     padding-top: 0.95rem;
+  }
+
+  .circle-gratitude {
+    min-height: min(440px, 88vw);
   }
 
   .circle-header {
@@ -1079,7 +1095,7 @@ body.circle-detail-view .circle-gradient-wrapper {
 
   .entries-list {
     width: 100%;
-    height: min(360px, 82vw);
+    height: min(440px, 88vw);
   }
 
   .circle-entry-card {
@@ -1097,8 +1113,9 @@ body.circle-detail-view .circle-gradient-wrapper {
   }
 
   .circle-detail.has-entries .circle-actions,
-  .circle-detail.loading-entries .circle-actions {
-    margin-top: 1.65rem;
+  .circle-detail.loading-entries .circle-actions,
+  .circle-detail.no-entries .circle-actions {
+    margin-top: 1rem;
   }
 
   .circle-actions textarea {

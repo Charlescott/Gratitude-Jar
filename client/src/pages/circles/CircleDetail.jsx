@@ -11,19 +11,33 @@ import {
   deleteCircle,
 } from "../../api";
 import { getRandomQuestion } from "../../api/questions";
+import {
+  clearCirclesCache,
+  getCircleDetailCache,
+  patchCircleDetailCache,
+  clearCircleDetailCache,
+} from "./Circles";
 
 const MAX_VISIBLE_ENTRIES = 5;
 
 export default function CircleDetail({ token }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [circle, setCircle] = useState(null);
+  // Seed initial state from the module-scoped cache if we have it — avoids the
+  // "Loading…" flash when navigating in from the circles list or from the
+  // freshly-created "Share Gratitude" flow.
+  const initialCached = getCircleDetailCache(id) || {};
+  const [circle, setCircle] = useState(initialCached.circle ?? null);
   const [error, setError] = useState("");
-  const [entries, setEntries] = useState([]);
-  const [isLoadingEntries, setIsLoadingEntries] = useState(true);
+  const [entries, setEntries] = useState(initialCached.entries ?? []);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(
+    initialCached.entries == null,
+  );
   const [isLoadingOlderEntries, setIsLoadingOlderEntries] = useState(false);
-  const [entriesHasMore, setEntriesHasMore] = useState(false);
-  const [entriesOffset, setEntriesOffset] = useState(0);
+  const [entriesHasMore, setEntriesHasMore] = useState(
+    Boolean(initialCached.hasMore),
+  );
+  const [entriesOffset, setEntriesOffset] = useState(initialCached.offset ?? 0);
   const entriesPageSize = 60;
   const [newEntry, setNewEntry] = useState("");
   const [postAnonymously, setPostAnonymously] = useState(false);
@@ -33,7 +47,7 @@ export default function CircleDetail({ token }) {
   const [showExplore, setShowExplore] = useState(false);
   const [entryPositions, setEntryPositions] = useState({});
   const [showArchive, setShowArchive] = useState(false);
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState(initialCached.members ?? []);
   const [membersOpen, setMembersOpen] = useState(false);
   const [focusedEntryId, setFocusedEntryId] = useState(null);
   const [isEntering, setIsEntering] = useState(false);
@@ -51,7 +65,7 @@ export default function CircleDetail({ token }) {
     const cached = circleRadiusCacheRef.current;
     if (cached.value != null && now - cached.ts < 250) return cached.value;
 
-    let entriesRadius = window.innerWidth <= 768 ? 180 : 260;
+    let entriesRadius = window.innerWidth <= 768 ? 220 : 320;
     const el = entriesListRef.current;
     if (el) {
       const rect = el.getBoundingClientRect();
@@ -97,13 +111,7 @@ export default function CircleDetail({ token }) {
   }
 
   useEffect(() => {
-    // Prevent stale content from previous circle while new route data loads.
-    setCircle(null);
-    setEntries([]);
-    setIsLoadingEntries(true);
-    setEntriesHasMore(false);
-    setEntriesOffset(0);
-    setEntryPositions({});
+    // Background refetch while any cached state keeps the UI populated.
     setError("");
     setFocusedEntryId(null);
     setDraggingEntryId(null);
@@ -114,22 +122,38 @@ export default function CircleDetail({ token }) {
     }
     inertiaRafsRef.current.clear();
 
+    const cached = getCircleDetailCache(id) || {};
+    const hadCachedEntries = cached.entries != null;
+
     fetchCircleById(token, id)
-      .then(setCircle)
+      .then((c) => {
+        setCircle(c);
+        patchCircleDetailCache(id, { circle: c });
+      })
       .catch((err) => setError(err.message));
+
+    if (!hadCachedEntries) setIsLoadingEntries(true);
     fetchCircleEntries(token, id, { limit: entriesPageSize, offset: 0 })
       .then((payload) => {
         const items = Array.isArray(payload) ? payload : payload.items || [];
         const hasMore = Boolean(payload?.hasMore);
         const nextOffset = Number.isFinite(payload?.offset) ? payload.offset : 0;
         const limit = Number.isFinite(payload?.limit) ? payload.limit : items.length;
+        const offset = nextOffset + limit;
         setEntries(items);
         setEntriesHasMore(hasMore);
-        setEntriesOffset(nextOffset + limit);
+        setEntriesOffset(offset);
+        patchCircleDetailCache(id, { entries: items, hasMore, offset });
       })
       .catch((err) => setError(err.message || "Failed to load circle entries."))
       .finally(() => setIsLoadingEntries(false));
-    fetchCircleMembers(token, id).then(setMembers).catch(() => setMembers([]));
+
+    fetchCircleMembers(token, id)
+      .then((m) => {
+        setMembers(m);
+        patchCircleDetailCache(id, { members: m });
+      })
+      .catch(() => setMembers([]));
   }, [id, token]);
 
   async function loadOlderEntries() {
@@ -298,7 +322,7 @@ export default function CircleDetail({ token }) {
 
   useLayoutEffect(() => {
     if (visibleEntries.length === 0) return;
-    const radius = window.innerWidth <= 768 ? 150 : 240;
+    const radius = window.innerWidth <= 768 ? 190 : 290;
     const basePadding = window.innerWidth <= 768 ? 12 : 16;
     const maxAttempts = 600;
 
@@ -460,7 +484,6 @@ export default function CircleDetail({ token }) {
   }
 
   if (error) return <p>{error}</p>;
-  if (!circle) return <p>Loading…</p>;
 
   async function handlePost() {
     if (!newEntry.trim() || isPosting) return;
@@ -476,7 +499,11 @@ export default function CircleDetail({ token }) {
         undefined,
         postAnonymously
       );
-      setEntries((prev) => [entry, ...prev]);
+      setEntries((prev) => {
+        const next = [entry, ...prev];
+        patchCircleDetailCache(id, { entries: next });
+        return next;
+      });
       setNewEntry("");
       setPostAnonymously(false);
     } catch (err) {
@@ -492,7 +519,11 @@ export default function CircleDetail({ token }) {
 
     try {
       await deleteCircleEntry(token, id, entryId);
-      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
+      setEntries((prev) => {
+        const next = prev.filter((entry) => entry.id !== entryId);
+        patchCircleDetailCache(id, { entries: next });
+        return next;
+      });
     } catch (err) {
       alert(err.message);
     }
@@ -518,6 +549,8 @@ export default function CircleDetail({ token }) {
 
     try {
       await leaveCircle(token, id);
+      clearCirclesCache();
+      clearCircleDetailCache(id);
       navigate("/circles");
     } catch (err) {
       alert(err.message);
@@ -532,6 +565,8 @@ export default function CircleDetail({ token }) {
 
     try {
       await deleteCircle(token, id);
+      clearCirclesCache();
+      clearCircleDetailCache(id);
       navigate("/circles");
     } catch (err) {
       alert(err.message);
@@ -550,7 +585,7 @@ export default function CircleDetail({ token }) {
     >
       {/* Header */}
       <section className="circle-header">
-        <h1>{circle.name}</h1>
+        <h1>{circle?.name ?? "\u00A0"}</h1>
         <div className="circle-members-dropdown" ref={membersDropdownRef}>
           <button
             type="button"
@@ -558,8 +593,11 @@ export default function CircleDetail({ token }) {
             onClick={() => setMembersOpen((prev) => !prev)}
             aria-expanded={membersOpen}
             aria-haspopup="true"
+            disabled={!circle}
           >
-            {circle.member_count} member{circle.member_count !== 1 ? "s" : ""} ▾
+            {circle
+              ? `${circle.member_count} member${circle.member_count !== 1 ? "s" : ""} ▾`
+              : "\u00A0"}
           </button>
 
           <div className={`circle-members-menu ${membersOpen ? "open" : ""}`}>
@@ -577,7 +615,7 @@ export default function CircleDetail({ token }) {
             )}
           </div>
         </div>
-        {circle.is_owner && circle.invite_key && (
+        {circle?.is_owner && circle.invite_key && (
           <button
             className="btn-help circle-invite-btn"
             onClick={() => {
@@ -780,15 +818,15 @@ export default function CircleDetail({ token }) {
 
       {/* Membership actions */}
       <section className="circle-member-actions">
-        {circle.is_owner ? (
+        {circle?.is_owner ? (
           <button className="circle-danger-link" onClick={handleDelete}>
             Delete Circle
           </button>
-        ) : (
+        ) : circle ? (
           <button className="circle-danger-link" onClick={handleLeave}>
             Leave Circle
           </button>
-        )}
+        ) : null}
       </section>
     </div>
   );
