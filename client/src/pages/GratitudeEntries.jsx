@@ -13,6 +13,7 @@ export default function GratitudeEntries({ token }) {
   const [mood, setMood] = useState("");
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const [sharePlatforms, setSharePlatforms] = useState([]);
   const PAGE_SIZE = 50;
 
   const MOOD_MAP = {
@@ -46,13 +47,14 @@ export default function GratitudeEntries({ token }) {
     }
 
     try {
+      const entryText = content.trim();
       const res = await fetch(`${API}/entries`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content, mood }),
+        body: JSON.stringify({ content: entryText, mood }),
       });
       if (!res.ok) throw new Error("Failed to add entry");
 
@@ -61,6 +63,26 @@ export default function GratitudeEntries({ token }) {
       setOffset((prev) => prev + 1);
       setContent("");
       setMood("");
+
+      sharePlatforms.forEach((platform) => {
+        let url;
+        const shareText = `${entryText} Shared via The Gratitude Jar`;
+        const shareUrl = window.location.origin;
+        if (platform === "twitter") {
+          url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+            shareText
+          )}&url=${encodeURIComponent(shareUrl)}`;
+        } else if (platform === "facebook") {
+          url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+            shareUrl
+          )}&quote=${encodeURIComponent(shareText)}`;
+        }
+        if (url) {
+          window.open(url, "_blank", "width=600,height=400");
+        }
+      });
+
+      setSharePlatforms([]);
 
       // trigger animation in next tick
       setTimeout(() => {
@@ -223,6 +245,38 @@ export default function GratitudeEntries({ token }) {
             >
               {loadingPrompt ? "Thinking…" : "Help me out"}
             </button>
+          </div>
+
+          <div className="share-options">
+            <label>Share on social media:</label>
+            <label className="share-checkbox">
+              <input
+                type="checkbox"
+                checked={sharePlatforms.includes("twitter")}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSharePlatforms((prev) => [...prev, "twitter"]);
+                  } else {
+                    setSharePlatforms((prev) => prev.filter((p) => p !== "twitter"));
+                  }
+                }}
+              />
+              Twitter
+            </label>
+            <label className="share-checkbox">
+              <input
+                type="checkbox"
+                checked={sharePlatforms.includes("facebook")}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSharePlatforms((prev) => [...prev, "facebook"]);
+                  } else {
+                    setSharePlatforms((prev) => prev.filter((p) => p !== "facebook"));
+                  }
+                }}
+              />
+              Facebook
+            </label>
           </div>
 
           <button
