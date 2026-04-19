@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import pool from "../db/index.js";
 import {
   sendCircleCheckInReminderEmail,
+  sendFriendDigestEmail,
   sendReminderEmail,
 } from "../routes/mailer.js";
 
@@ -56,9 +57,10 @@ export function scheduleReminders() {
 
       const { rows: reminders } = await pool.query(
         `
-        SELECT 
+        SELECT
           ur.id,
           ur.user_id,
+          ur.frequency,
           ur.time_of_day,
           ur.timezone,
           ur.last_sent,
@@ -111,11 +113,30 @@ export function scheduleReminders() {
           const reminderHour = Math.max(0, Math.min(23, reminderHourRaw));
           const reminderMinute = Math.max(0, Math.min(59, reminderMinuteRaw));
 
-          const alreadySentToday = reminder.last_sent
+          const lastSent = reminder.last_sent
             ? DateTime.fromJSDate(new Date(reminder.last_sent))
-                .setZone(effectiveZone)
-                .hasSame(userNow, "day")
+            : null;
+
+          const alreadySentToday = lastSent
+            ? lastSent.setZone(effectiveZone).hasSame(userNow, "day")
             : false;
+
+          const daysSinceLastSent = lastSent
+            ? nowUtc.diff(lastSent.toUTC(), "days").days
+            : Infinity;
+
+          const frequency = String(reminder.frequency || "daily")
+            .trim()
+            .toLowerCase();
+
+          let dueForFrequency;
+          if (frequency === "weekly") {
+            dueForFrequency = daysSinceLastSent >= 7;
+          } else if (frequency === "monthly") {
+            dueForFrequency = daysSinceLastSent >= 28;
+          } else {
+            dueForFrequency = !alreadySentToday;
+          }
 
           const reminderNow = userNow.set({
             hour: reminderHour,
@@ -130,9 +151,9 @@ export function scheduleReminders() {
             minutesSinceReminder >= 0 && minutesSinceReminder < 2;
 
           if (isDueNow) {
-            if (!alreadySentToday) {
+            if (dueForFrequency) {
               console.log(
-                `Time matches for user ${reminder.user_id}. Sending email...`
+                `Time matches for user ${reminder.user_id} (${frequency}). Sending email...`
               );
 
               await sendReminderEmail(reminder.email, reminder.name, {
@@ -163,6 +184,19 @@ export function scheduleReminders() {
       console.error("Cron error:", err);
     }
   });
+
+  cron.schedule(
+    "0 13 * * *",
+    async () => {
+      try {
+        console.log("Running friend digest job...");
+        await runFriendDigestJob();
+      } catch (err) {
+        console.error("Friend digest cron error:", err);
+      }
+    },
+    { timezone: "UTC" }
+  );
 
   cron.schedule(
     "0 15 * * *",
@@ -340,4 +374,71 @@ async function maybeSendCircleCheckinReminder({ userId, email, name, nowUtc }) {
     `,
     [selected.circleId, userId]
   );
+}
+
+async function runFriendDigestJob() {
+  const { rows: recipients } = await pool.query(
+    `
+    SELECT DISTINCT u.id, u.email, u.name
+    FROM users u
+    JOIN follows f ON f.follower_id = u.id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM user_email_unsubscribes ue WHERE ue.user_id = u.id
+    )
+    `
+  );
+
+  for (const recipient of recipients) {
+    try {
+      const { rows: lastRunRows } = await pool.query(
+        "SELECT last_sent FROM friend_digest_runs WHERE user_id = $1",
+        [recipient.id]
+      );
+      const lastSent = lastRunRows[0]?.last_sent
+        ? new Date(lastRunRows[0].last_sent)
+        : null;
+
+      const cutoff = lastSent && Date.now() - lastSent.getTime() < 24 * 60 * 60 * 1000
+        ? lastSent
+        : new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const { rows: entries } = await pool.query(
+        `
+        SELECT ge.id, ge.content, ge.mood, ge.created_at, ge.visibility,
+               u.name AS author_name, u.email AS author_email
+        FROM gratitude_entries ge
+        JOIN follows f
+          ON f.followee_id = ge.user_id AND f.follower_id = $1
+        JOIN users u ON u.id = ge.user_id
+        WHERE ge.visibility IN ('friends', 'public')
+          AND ge.created_at > $2
+        ORDER BY ge.created_at DESC
+        LIMIT 25
+        `,
+        [recipient.id, cutoff]
+      );
+
+      if (!entries.length) continue;
+
+      await sendFriendDigestEmail(recipient.email, {
+        recipientName: recipient.name,
+        userId: recipient.id,
+        entries,
+      });
+
+      await pool.query(
+        `
+        INSERT INTO friend_digest_runs (user_id, last_sent)
+        VALUES ($1, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET last_sent = EXCLUDED.last_sent
+        `,
+        [recipient.id]
+      );
+    } catch (recipientErr) {
+      console.error(
+        `Friend digest failed for user ${recipient.id}:`,
+        recipientErr
+      );
+    }
+  }
 }

@@ -801,3 +801,331 @@ If you did not request this, you can ignore this email.
     messageId,
   });
 }
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildFriendDigestMessage({
+  recipientName,
+  entries,
+  appBaseUrl,
+  logoUrl,
+  unsubscribeUrl,
+}) {
+  const baseUrl = appBaseUrl.replace(/\/$/, "");
+  const feedUrl = `${baseUrl}/feed`;
+  const unsubscribeCopy = unsubscribeUrl || baseUrl;
+
+  const textLines = entries.map((entry) => {
+    const when = new Date(entry.created_at).toLocaleString();
+    const author = entry.author_name || entry.author_email || "A friend";
+    const preview = String(entry.content).slice(0, 240);
+    return `• ${author} — ${when}\n  ${preview}`;
+  });
+
+  const htmlItems = entries
+    .map((entry) => {
+      const when = new Date(entry.created_at).toLocaleString();
+      const author = escapeHtml(
+        entry.author_name || entry.author_email || "A friend"
+      );
+      const preview = escapeHtml(String(entry.content).slice(0, 600));
+      const mood = entry.mood ? ` · ${escapeHtml(entry.mood)}` : "";
+      return `
+        <li style="margin: 0 0 14px 0; padding: 12px 14px; border-radius: 10px; background: #f8fafc;">
+          <div style="font-weight: 600; color: #0f172a;">${author}</div>
+          <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;">${escapeHtml(
+            when
+          )}${mood}</div>
+          <div style="white-space: pre-wrap; color: #0f172a;">${preview}</div>
+        </li>
+      `;
+    })
+    .join("");
+
+  const subject =
+    entries.length === 1
+      ? `${entries[0].author_name || "A friend"} shared a gratitude`
+      : `${entries.length} gratitude posts from people you follow`;
+
+  return {
+    subject,
+    text: `Hi ${recipientName || "there"},
+
+Here is what people you follow have shared:
+
+${textLines.join("\n\n")}
+
+Open the feed:
+${feedUrl}
+
+Unsubscribe:
+${unsubscribeCopy}
+`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <div style="margin-bottom: 16px;">
+          <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+        </div>
+        <p>Hi ${escapeHtml(recipientName || "there")},</p>
+        <p>Here's what people you follow have shared:</p>
+        <ul style="list-style: none; padding: 0; margin: 0 0 18px 0;">
+          ${htmlItems}
+        </ul>
+        <p>
+          <a
+            href="${feedUrl}"
+            style="
+              display:inline-block;
+              padding:12px 28px;
+              min-width:140px;
+              border-radius:999px;
+              text-align:center;
+              font-weight:600;
+              color:#ffffff !important;
+              background:#2f80ed;
+              background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+              text-decoration:none !important;
+              border:1px solid #2f80ed;
+              box-shadow:0 8px 20px rgba(0,0,0,0.15);
+            "
+          >
+            Open the feed
+          </a>
+        </p>
+        <p style="font-size: 12px; color: #64748b;">
+          If the button does not display, use this link:
+          <a href="${feedUrl}" style="color:#2f80ed; text-decoration:underline;">${feedUrl}</a>
+        </p>
+        <p style="font-size: 12px; color: #64748b;">
+          If you no longer want these digests,
+          <a href="${unsubscribeCopy}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
+        </p>
+      </div>
+    `,
+  };
+}
+
+export async function sendFriendDigestEmail(
+  to,
+  { recipientName, userId, entries }
+) {
+  if (!entries || !entries.length) return;
+
+  assertEmailProviderConfigured();
+
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const supportEmail = getFromAddress(supportAddress) || getFromAddress(from);
+
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net")
+    .replace(/\/$/, "");
+  const apiBaseUrl = (
+    process.env.API_URL || "https://gratuity-jar-api.onrender.com"
+  ).replace(/\/$/, "");
+  const logoUrl = process.env.APP_LOGO_URL || `${appBaseUrl}/logo.png`;
+
+  const unsubscribeToken = createUnsubscribeToken({ userId, email: to });
+  const unsubscribeUrl = unsubscribeToken
+    ? `${apiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(
+        unsubscribeToken
+      )}`
+    : null;
+  const listUnsubscribe = unsubscribeUrl
+    ? `<mailto:${supportEmail}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportEmail}?subject=unsubscribe>`;
+
+  const message = buildFriendDigestMessage({
+    recipientName,
+    entries,
+    appBaseUrl,
+    logoUrl,
+    unsubscribeUrl,
+  });
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+
+  const day = new Date().toISOString().slice(0, 10);
+  const entityRefId = `friend-digest-${userId || to}-${day}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendWithResend({
+      to,
+      from,
+      supportAddress,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      listUnsubscribe,
+      entityRefId,
+      messageId,
+      unsubscribeUrl,
+    });
+    console.log(`📧 Friend digest sent via Resend to ${to}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    headers: {
+      "List-Unsubscribe": listUnsubscribe,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "X-Entity-Ref-ID": entityRefId,
+      ...(unsubscribeUrl ? { "X-List-Unsubscribe-URL": unsubscribeUrl } : {}),
+    },
+    messageId,
+  });
+  console.log(`📧 Friend digest sent to ${to}`);
+}
+
+export async function sendNewFollowerEmail(
+  to,
+  { recipientName, recipientUserId, followerName, followerEmail }
+) {
+  assertEmailProviderConfigured();
+
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const supportEmail = getFromAddress(supportAddress) || getFromAddress(from);
+
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net")
+    .replace(/\/$/, "");
+  const apiBaseUrl = (
+    process.env.API_URL || "https://gratuity-jar-api.onrender.com"
+  ).replace(/\/$/, "");
+  const logoUrl = process.env.APP_LOGO_URL || `${appBaseUrl}/logo.png`;
+  const friendsUrl = `${appBaseUrl}/friends`;
+
+  const unsubscribeToken = createUnsubscribeToken({
+    userId: recipientUserId,
+    email: to,
+  });
+  const unsubscribeUrl = unsubscribeToken
+    ? `${apiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(
+        unsubscribeToken
+      )}`
+    : null;
+  const listUnsubscribe = unsubscribeUrl
+    ? `<mailto:${supportEmail}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportEmail}?subject=unsubscribe>`;
+
+  const followerDisplay = followerName || followerEmail || "Someone";
+  const subject = `${followerDisplay} started following you on Gratitude Jar`;
+  const unsubscribeCopy = unsubscribeUrl || friendsUrl;
+
+  const text = `Hi ${recipientName || "there"},
+
+${followerDisplay} just followed you on Gratitude Jar.
+
+When you post a gratitude entry set to Friends or Public, they'll see it in their daily digest.
+
+Open your friends page:
+${friendsUrl}
+
+Unsubscribe:
+${unsubscribeCopy}
+`;
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <div style="margin-bottom: 16px;">
+        <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+      </div>
+      <p>Hi ${escapeHtml(recipientName || "there")},</p>
+      <p style="margin: 12px 0 10px 0; font-size: 18px; font-weight: 700;">
+        ${escapeHtml(followerDisplay)} just followed you.
+      </p>
+      <p>When you post a gratitude entry set to <strong>Friends</strong> or <strong>Public</strong>, they'll see it in their daily digest.</p>
+      <p>
+        <a
+          href="${friendsUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Open friends
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${friendsUrl}" style="color:#2f80ed; text-decoration:underline;">${friendsUrl}</a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If you no longer want these notifications,
+        <a href="${unsubscribeCopy}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
+      </p>
+    </div>
+  `;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+
+  const entityRefId = `new-follower-${recipientUserId || to}-${Date.now()}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendWithResend({
+      to,
+      from,
+      supportAddress,
+      subject,
+      text,
+      html,
+      listUnsubscribe,
+      entityRefId,
+      messageId,
+      unsubscribeUrl,
+    });
+    console.log(`📧 New-follower email sent via Resend to ${to}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject,
+    text,
+    html,
+    headers: {
+      "List-Unsubscribe": listUnsubscribe,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "X-Entity-Ref-ID": entityRefId,
+      ...(unsubscribeUrl ? { "X-List-Unsubscribe-URL": unsubscribeUrl } : {}),
+    },
+    messageId,
+  });
+  console.log(`📧 New-follower email sent to ${to}`);
+}

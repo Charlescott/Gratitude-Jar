@@ -161,6 +161,14 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
               >
                 Circles
               </Link>
+              <Link
+                to="/friends"
+                className="dropdown-item"
+                onClick={() => setProfileOpen(false)}
+                style={{ padding: "0.5rem 1rem" }}
+              >
+                Friends
+              </Link>
               {isAdmin && (
                 <Link
                   to="/admin"

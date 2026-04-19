@@ -11,9 +11,12 @@ export default function GratitudeEntries({ token }) {
   const [error, setError] = useState(null);
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
+  const [visibility, setVisibility] = useState("private");
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
-  const [sharePlatforms, setSharePlatforms] = useState([]);
+  const [hasShared, setHasShared] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(localStorage.getItem('dontShowShareModal') === 'true');
   const PAGE_SIZE = 50;
 
   const MOOD_MAP = {
@@ -23,6 +26,12 @@ export default function GratitudeEntries({ token }) {
     low: "😔",
     stressed: "😤",
     grateful: "🙏",
+  };
+
+  const VISIBILITY_LABEL = {
+    private: "🔒 Private",
+    friends: "👥 Friends",
+    public: "🌍 Public",
   };
 
   // Fetch random prompt
@@ -35,6 +44,26 @@ export default function GratitudeEntries({ token }) {
       console.error(err);
     } finally {
       setLoadingPrompt(false);
+    }
+  }
+
+  // Share function
+  function shareToPlatform(platform, entryText) {
+    let url;
+    const shareText = `${entryText} Shared via The Gratitude Jar`;
+    const shareUrl = window.location.origin;
+    if (platform === "twitter") {
+      url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        shareText
+      )}&url=${encodeURIComponent(shareUrl)}`;
+    } else if (platform === "facebook") {
+      url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        shareUrl
+      )}&quote=${encodeURIComponent(shareText)}`;
+    }
+    if (url) {
+      window.open(url, "_blank", "width=600,height=400");
+      setHasShared(true);
     }
   }
 
@@ -54,7 +83,7 @@ export default function GratitudeEntries({ token }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: entryText, mood }),
+        body: JSON.stringify({ content: entryText, mood, visibility }),
       });
       if (!res.ok) throw new Error("Failed to add entry");
 
@@ -63,26 +92,15 @@ export default function GratitudeEntries({ token }) {
       setOffset((prev) => prev + 1);
       setContent("");
       setMood("");
+      setVisibility("private");
 
-      sharePlatforms.forEach((platform) => {
-        let url;
-        const shareText = `${entryText} Shared via The Gratitude Jar`;
-        const shareUrl = window.location.origin;
-        if (platform === "twitter") {
-          url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-            shareText
-          )}&url=${encodeURIComponent(shareUrl)}`;
-        } else if (platform === "facebook") {
-          url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-            shareUrl
-          )}&quote=${encodeURIComponent(shareText)}`;
-        }
-        if (url) {
-          window.open(url, "_blank", "width=600,height=400");
-        }
-      });
+      // Show modal if not opted out and user hasn't shared yet
+      if (!dontShowAgain && !hasShared) {
+        setShowShareModal(true);
+      }
 
-      setSharePlatforms([]);
+      // Reset hasShared for next entry
+      setHasShared(false);
 
       // trigger animation in next tick
       setTimeout(() => {
@@ -229,13 +247,24 @@ export default function GratitudeEntries({ token }) {
               value={mood}
               onChange={(e) => setMood(e.target.value)}
             >
-              <option value="">Mood (optional)</option>
+              <option value="">Mood (opt.)</option>
               <option value="happy">😊 Happy</option>
               <option value="calm">😌 Calm</option>
               <option value="neutral">😐 Neutral</option>
               <option value="low">😔 Low</option>
               <option value="stressed">😤 Stressed</option>
               <option value="grateful">🙏 Grateful</option>
+            </select>
+
+            <select
+              className="input"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value)}
+              aria-label="Who can see this entry"
+            >
+              <option value="private">🔒 Private</option>
+              <option value="friends">👥 Friends</option>
+              <option value="public">🌍 Public</option>
             </select>
 
             <button
@@ -247,38 +276,6 @@ export default function GratitudeEntries({ token }) {
             </button>
           </div>
 
-          <div className="share-options">
-            <label>Share on social media:</label>
-            <label className="share-checkbox">
-              <input
-                type="checkbox"
-                checked={sharePlatforms.includes("twitter")}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSharePlatforms((prev) => [...prev, "twitter"]);
-                  } else {
-                    setSharePlatforms((prev) => prev.filter((p) => p !== "twitter"));
-                  }
-                }}
-              />
-              Twitter
-            </label>
-            <label className="share-checkbox">
-              <input
-                type="checkbox"
-                checked={sharePlatforms.includes("facebook")}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSharePlatforms((prev) => [...prev, "facebook"]);
-                  } else {
-                    setSharePlatforms((prev) => prev.filter((p) => p !== "facebook"));
-                  }
-                }}
-              />
-              Facebook
-            </label>
-          </div>
-
           <button
             className="btn btn-secondary"
             type="submit"
@@ -286,6 +283,31 @@ export default function GratitudeEntries({ token }) {
           >
             Add Entry
           </button>
+
+          <div className="share-options">
+            <span className="share-label">Share:</span>
+            <button
+              className="btn-share btn-share-twitter btn-share-small"
+              onClick={() => shareToPlatform("twitter", content.trim())}
+              type="button"
+              disabled={!content.trim()}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <button
+              className="btn-share btn-share-facebook btn-share-small"
+              onClick={() => shareToPlatform("facebook", content.trim())}
+              type="button"
+              disabled={!content.trim()}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            </button>
+          </div>
         </form>
       </div>
 
@@ -307,6 +329,18 @@ export default function GratitudeEntries({ token }) {
                     {entry.content}
                     {entry.mood && (
                       <span className="entry-mood">{MOOD_MAP[entry.mood]}</span>
+                    )}
+                    {entry.visibility && (
+                      <span
+                        className="entry-visibility"
+                        style={{
+                          marginLeft: "0.5rem",
+                          fontSize: "0.8rem",
+                          color: "var(--muted-text)",
+                        }}
+                      >
+                        {VISIBILITY_LABEL[entry.visibility] || entry.visibility}
+                      </span>
                     )}
                   </div>
                   <button
@@ -333,6 +367,56 @@ export default function GratitudeEntries({ token }) {
           </>
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Would you like to share your gratitude with the rest of the world?</h3>
+            <div className="modal-share-buttons">
+              <button
+                className="btn-share btn-share-twitter"
+                onClick={() => {
+                  shareToPlatform("twitter", content.trim());
+                  setShowShareModal(false);
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Twitter
+              </button>
+              <button
+                className="btn-share btn-share-facebook"
+                onClick={() => {
+                  shareToPlatform("facebook", content.trim());
+                  setShowShareModal(false);
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Facebook
+              </button>
+            </div>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => {
+                  setDontShowAgain(e.target.checked);
+                  localStorage.setItem('dontShowShareModal', e.target.checked);
+                }}
+              />
+              Don't show this again
+            </label>
+            <button className="btn-close" onClick={() => setShowShareModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -53,12 +53,35 @@ export default function CircleDetail({ token }) {
   const [isEntering, setIsEntering] = useState(false);
   const [draggingEntryId, setDraggingEntryId] = useState(null);
   const [slidingEntries, setSlidingEntries] = useState({});
+  const [hasShared, setHasShared] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(localStorage.getItem('dontShowShareModal') === 'true');
   const membersDropdownRef = useRef(null);
   const entriesListRef = useRef(null);
   const dragRef = useRef(null);
   const ignoreClickRef = useRef({ id: null, until: 0 });
   const inertiaRafsRef = useRef(new Map());
   const circleRadiusCacheRef = useRef({ value: null, ts: 0 });
+
+  // Share function
+  function shareToPlatform(platform, entryText) {
+    let url;
+    const shareText = `${entryText} Shared via The Gratitude Jar`;
+    const shareUrl = window.location.origin;
+    if (platform === "twitter") {
+      url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        shareText
+      )}&url=${encodeURIComponent(shareUrl)}`;
+    } else if (platform === "facebook") {
+      url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        shareUrl
+      )}&quote=${encodeURIComponent(shareText)}`;
+    }
+    if (url) {
+      window.open(url, "_blank", "width=600,height=400");
+      setHasShared(true);
+    }
+  }
 
   function getCircleRadiusPx() {
     const now = performance.now();
@@ -491,11 +514,13 @@ export default function CircleDetail({ token }) {
     setIsPosting(true);
     setError("");
 
+    const entryText = newEntry.trim();
+
     try {
       const entry = await createCircleEntry(
         token,
         id,
-        newEntry,
+        entryText,
         undefined,
         postAnonymously
       );
@@ -506,6 +531,14 @@ export default function CircleDetail({ token }) {
       });
       setNewEntry("");
       setPostAnonymously(false);
+
+      // Show modal if not opted out and user hasn't shared yet
+      if (!dontShowAgain && !hasShared) {
+        setShowShareModal(true);
+      }
+
+      // Reset hasShared for next entry
+      setHasShared(false);
     } catch (err) {
       setError(err.message || "Failed to share gratitude.");
     } finally {
@@ -776,6 +809,31 @@ export default function CircleDetail({ token }) {
           Post anonymously in this circle
         </label>
 
+        <div className="share-options">
+          <span className="share-label">Share:</span>
+          <button
+            className="btn-share btn-share-twitter btn-share-small"
+            onClick={() => shareToPlatform("twitter", newEntry.trim())}
+            type="button"
+            disabled={!newEntry.trim() || isPosting}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <button
+            className="btn-share btn-share-facebook btn-share-small"
+            onClick={() => shareToPlatform("facebook", newEntry.trim())}
+            type="button"
+            disabled={!newEntry.trim() || isPosting}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+          </button>
+        </div>
+
         {archivedEntries.length > 0 && (
           <div className="circle-archive">
             <button
@@ -828,6 +886,56 @@ export default function CircleDetail({ token }) {
           </button>
         ) : null}
       </section>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Would you like to share your gratitude with the rest of the world?</h3>
+            <div className="modal-share-buttons">
+              <button
+                className="btn-share btn-share-twitter"
+                onClick={() => {
+                  shareToPlatform("twitter", newEntry.trim());
+                  setShowShareModal(false);
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Twitter
+              </button>
+              <button
+                className="btn-share btn-share-facebook"
+                onClick={() => {
+                  shareToPlatform("facebook", newEntry.trim());
+                  setShowShareModal(false);
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Facebook
+              </button>
+            </div>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => {
+                  setDontShowAgain(e.target.checked);
+                  localStorage.setItem('dontShowShareModal', e.target.checked);
+                }}
+              />
+              Don't show this again
+            </label>
+            <button className="btn-close" onClick={() => setShowShareModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

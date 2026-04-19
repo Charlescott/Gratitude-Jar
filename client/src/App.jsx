@@ -15,6 +15,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import RemindersPage from "./pages/Reminders";
+import Friends from "./pages/Friends";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -50,7 +51,7 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
         setUser(null);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        const protectedPaths = ["/entries", "/reminders", "/circles", "/admin"];
+        const protectedPaths = ["/entries", "/reminders", "/circles", "/friends", "/admin"];
         if (protectedPaths.some((p) => location.pathname.startsWith(p))) {
           navigate("/", { replace: true });
         }
@@ -164,6 +165,12 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
             ) : (
               <Login onLogin={handleLogin} />
             )
+          }
+        />
+        <Route
+          path="/friends"
+          element={
+            isAuthenticated ? <Friends /> : <Login onLogin={handleLogin} />
           }
         />
 

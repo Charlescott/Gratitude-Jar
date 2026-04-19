@@ -49,17 +49,26 @@ router.get("/:id", requireUser, async (req, res) => {
   }
 });
 
+const ALLOWED_VISIBILITIES = new Set(["private", "friends", "public"]);
+
+function normalizeVisibility(value, fallback = "private") {
+  if (value == null) return fallback;
+  const v = String(value).trim().toLowerCase();
+  return ALLOWED_VISIBILITIES.has(v) ? v : fallback;
+}
+
 router.post("/", requireUser, async (req, res) => {
   const content = req.body.content?.trim();
   const mood = req.body.mood?.trim();
+  const visibility = normalizeVisibility(req.body.visibility, "private");
 
   if (!content) {
     return res.status(400).json({ error: "Content is required" });
   }
   try {
     const result = await pool.query(
-      "INSERT INTO gratitude_entries (user_id, content, mood) VALUES ($1, $2, $3) RETURNING *",
-      [req.user.id, content, mood || null]
+      "INSERT INTO gratitude_entries (user_id, content, mood, visibility) VALUES ($1, $2, $3, $4) RETURNING *",
+      [req.user.id, content, mood || null, visibility]
     );
 
     res.status(201).json(result.rows[0]);
@@ -72,11 +81,26 @@ router.post("/", requireUser, async (req, res) => {
 router.put("/:id", requireUser, async (req, res) => {
   const { id } = req.params;
   const { content, mood } = req.body;
+  const hasVisibility = Object.prototype.hasOwnProperty.call(
+    req.body,
+    "visibility"
+  );
   try {
-    const result = await pool.query(
-      "UPDATE gratitude_entries SET content = $1, mood = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING *",
-      [content, mood, id, req.user.id]
-    );
+    const result = hasVisibility
+      ? await pool.query(
+          "UPDATE gratitude_entries SET content = $1, mood = $2, visibility = $3, updated_at = NOW() WHERE id = $4 AND user_id = $5 RETURNING *",
+          [
+            content,
+            mood,
+            normalizeVisibility(req.body.visibility, "private"),
+            id,
+            req.user.id,
+          ]
+        )
+      : await pool.query(
+          "UPDATE gratitude_entries SET content = $1, mood = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING *",
+          [content, mood, id, req.user.id]
+        );
     if (result.rows.length === 0)
       return res.status(404).json({ error: "Entry not found" });
     res.json(result.rows[0]);

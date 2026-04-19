@@ -811,6 +811,28 @@ textarea:focus {
   justify-self: center;
 }
 
+.share-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted-text);
+}
+
+.share-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.share-checkbox {
+  cursor: pointer;
+}
+
 .circle-actions textarea {
   resize: none;
   background-color: rgba(255, 255, 255, 0.35);
@@ -905,6 +927,22 @@ body.circle-detail-view .circle-gradient-wrapper {
   .circle-detail {
     width: min(96vw, 600px);
   }
+
+  .share-options {
+    gap: 0.35rem;
+  }
+
+  .share-options > label:first-child {
+    margin-bottom: 0.15rem;
+  }
+
+  .share-options .share-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    max-width: fit-content;
+  }
 }
 
 .circle-explore {
@@ -959,6 +997,176 @@ body.circle-detail-view .circle-gradient-wrapper {
   font-size: 0.85rem;
   cursor: pointer;
   text-decoration: underline;
+}
+
+/* =====================================================
+   SHARE MODAL
+===================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  color: var(--text-color);
+}
+
+.modal-content h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.modal-share-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.btn-share {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-share:hover {
+  background: #e66b3a;
+}
+
+.btn-share-twitter {
+  background: #1da1f2;
+}
+
+.btn-share-twitter:hover {
+  background: #0d8bd9;
+}
+
+.btn-share-facebook {
+  background: #1877f2;
+}
+
+.btn-share-facebook:hover {
+  background: #166fe5;
+}
+
+.btn-share-small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-share-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+}
+
+.btn-close {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: var(--text-color);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.share-label {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+
+.share-options {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted-text);
+  font-size: 0.95rem;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 1.5rem;
+    max-width: 350px;
+  }
+
+  .modal-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .modal-share-buttons {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn-share {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.95rem;
+  }
+
+  .share-options {
+    gap: 0.35rem;
+  }
+
+  .share-label {
+    margin-bottom: 0.15rem;
+  }
+
+  .btn-share-small {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
 }
 
 @media (max-width: 900px) {

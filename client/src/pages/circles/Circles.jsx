@@ -116,7 +116,6 @@ export default function CirclesPage({ token }) {
 
     return () => {
       body.classList.remove(
-        "circles-celebrating",
         "circles-shrinking",
         "circles-no-animate"
       );

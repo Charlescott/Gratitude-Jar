@@ -9,6 +9,8 @@ import { scheduleReminders } from "./db/reminderCron.js";
 import remindersRouter from "./routes/reminders.js";
 import circlesRouter from "./routes/circles.js";
 import adminRouter from "./routes/admin.js";
+import followsRouter from "./routes/follows.js";
+import ensureSocialSchema from "./db/ensureSocialSchema.js";
 
 dotenv.config({
   path: process.env.NODE_ENV === "production" ? ".env" : ".env.local",
@@ -20,6 +22,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/reminders", remindersRouter);
 app.use("/circles", circlesRouter);
+app.use("/follows", followsRouter);
 
 pool.query("SELECT NOW()", (err, res) => {
   if (err) {
@@ -42,6 +45,10 @@ app.use("/entries", entriesRouter);
 app.use("/admin", adminRouter);
 
 const PORT = process.env.PORT || 5000;
+
+ensureSocialSchema(pool).catch((err) =>
+  console.error("ensureSocialSchema error:", err)
+);
 
 scheduleReminders();
 app.listen(PORT, () => {
