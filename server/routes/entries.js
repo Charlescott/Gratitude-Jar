@@ -1,6 +1,7 @@
 import express from "express";
 import pool from "../db/index.js";
 import requireUser from "../middleware/requireUser.js";
+import { fanOutToFollowers } from "../db/notifications.js";
 
 const router = express.Router();
 
@@ -61,17 +62,46 @@ router.post("/", requireUser, async (req, res) => {
   const content = req.body.content?.trim();
   const mood = req.body.mood?.trim();
   const visibility = normalizeVisibility(req.body.visibility, "private");
+  const isAnonymous =
+    Boolean(req.body.is_anonymous) && visibility !== "private";
 
   if (!content) {
     return res.status(400).json({ error: "Content is required" });
   }
   try {
     const result = await pool.query(
-      "INSERT INTO gratitude_entries (user_id, content, mood, visibility) VALUES ($1, $2, $3, $4) RETURNING *",
-      [req.user.id, content, mood || null, visibility]
+      "INSERT INTO gratitude_entries (user_id, content, mood, visibility, is_anonymous) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [req.user.id, content, mood || null, visibility, isAnonymous]
     );
 
     res.status(201).json(result.rows[0]);
+
+    if (visibility !== "private") {
+      try {
+        let authorDisplay = "Someone";
+        if (!isAnonymous) {
+          const authorRes = await pool.query(
+            "SELECT name, email FROM users WHERE id = $1",
+            [req.user.id]
+          );
+          const author = authorRes.rows[0] || {};
+          authorDisplay = author.name || author.email || "Someone";
+        } else {
+          authorDisplay = "Anonymous";
+        }
+        const preview = content.slice(0, 140);
+
+        await fanOutToFollowers(pool, {
+          followeeId: req.user.id,
+          type: "friend_post",
+          title: `${authorDisplay} shared a gratitude`,
+          body: preview,
+          link: "/feed",
+        });
+      } catch (fanOutErr) {
+        console.error("Friend-post fan-out failed:", fanOutErr);
+      }
+    }
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Failed to create entry" });
@@ -80,29 +110,43 @@ router.post("/", requireUser, async (req, res) => {
 
 router.put("/:id", requireUser, async (req, res) => {
   const { id } = req.params;
-  const { content, mood } = req.body;
-  const hasVisibility = Object.prototype.hasOwnProperty.call(
-    req.body,
-    "visibility"
-  );
   try {
-    const result = hasVisibility
-      ? await pool.query(
-          "UPDATE gratitude_entries SET content = $1, mood = $2, visibility = $3, updated_at = NOW() WHERE id = $4 AND user_id = $5 RETURNING *",
-          [
-            content,
-            mood,
-            normalizeVisibility(req.body.visibility, "private"),
-            id,
-            req.user.id,
-          ]
-        )
-      : await pool.query(
-          "UPDATE gratitude_entries SET content = $1, mood = $2, updated_at = NOW() WHERE id = $3 AND user_id = $4 RETURNING *",
-          [content, mood, id, req.user.id]
-        );
-    if (result.rows.length === 0)
+    const currentRes = await pool.query(
+      "SELECT content, mood, visibility, is_anonymous FROM gratitude_entries WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+    if (!currentRes.rows.length) {
       return res.status(404).json({ error: "Entry not found" });
+    }
+    const current = currentRes.rows[0];
+
+    const content =
+      req.body.content !== undefined
+        ? String(req.body.content).trim()
+        : current.content;
+    if (!content) {
+      return res.status(400).json({ error: "Content is required" });
+    }
+    const mood =
+      req.body.mood !== undefined ? req.body.mood || null : current.mood;
+    const visibility = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "visibility"
+    )
+      ? normalizeVisibility(req.body.visibility, current.visibility)
+      : current.visibility;
+    const requestedAnonymous = Object.prototype.hasOwnProperty.call(
+      req.body,
+      "is_anonymous"
+    )
+      ? Boolean(req.body.is_anonymous)
+      : Boolean(current.is_anonymous);
+    const isAnonymous = requestedAnonymous && visibility !== "private";
+
+    const result = await pool.query(
+      "UPDATE gratitude_entries SET content = $1, mood = $2, visibility = $3, is_anonymous = $4, updated_at = NOW() WHERE id = $5 AND user_id = $6 RETURNING *",
+      [content, mood, visibility, isAnonymous, id, req.user.id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err.message);

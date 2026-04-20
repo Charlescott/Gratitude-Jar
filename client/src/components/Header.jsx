@@ -1,11 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import logo from "../assets/logo.png";
+import NotificationBell from "./NotificationBell";
 
 export default function Header({ token, user, onLogout, theme, setTheme }) {
   const location = useLocation();
   const isHome = location.pathname === "/";
   const isCircles = location.pathname.startsWith("/circles");
+  const isFeed = location.pathname === "/feed";
   const isAuthenticated = Boolean(token);
   const isAdmin = Boolean(user?.is_admin);
 
@@ -58,6 +60,7 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
 
   return (
     <header
+      className={isFeed ? "app-header app-header-feed" : "app-header"}
       style={{
         padding: headerPadding,
         display: "flex",
@@ -69,8 +72,13 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
         minHeight: isMobile ? "56px" : "72px",
         boxSizing: "border-box",
         zIndex: 100,
-        background: isCircles ? "transparent" : "var(--bg-color)",
-        backdropFilter: isCircles ? "none" : "blur(8px)",
+        background: isCircles
+          ? "transparent"
+          : isFeed
+          ? undefined
+          : "var(--bg-color)",
+        backdropFilter: isCircles ? "none" : "blur(12px)",
+        WebkitBackdropFilter: isCircles ? "none" : "blur(12px)",
       }}
     >
       {/* Left */}
@@ -99,6 +107,8 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
           position: "relative",
         }}
       >
+        {isAuthenticated && <NotificationBell token={token} />}
+
         {isAuthenticated && (
           <div
             className="profile-menu"
@@ -137,6 +147,14 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
                   "opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)",
               }}
             >
+              <Link
+                to="/feed"
+                className="dropdown-item"
+                onClick={() => setProfileOpen(false)}
+                style={{ padding: "0.5rem 1rem" }}
+              >
+                Feed
+              </Link>
               <Link
                 to="/entries"
                 className="dropdown-item"

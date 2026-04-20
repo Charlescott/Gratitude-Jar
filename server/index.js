@@ -10,7 +10,11 @@ import remindersRouter from "./routes/reminders.js";
 import circlesRouter from "./routes/circles.js";
 import adminRouter from "./routes/admin.js";
 import followsRouter from "./routes/follows.js";
+import notificationsRouter from "./routes/notifications.js";
+import feedRouter from "./routes/feed.js";
 import ensureSocialSchema from "./db/ensureSocialSchema.js";
+import ensureNotificationsSchema from "./db/ensureNotificationsSchema.js";
+import ensureFeedSchema from "./db/ensureFeedSchema.js";
 
 dotenv.config({
   path: process.env.NODE_ENV === "production" ? ".env" : ".env.local",
@@ -23,6 +27,8 @@ app.use(express.json());
 app.use("/reminders", remindersRouter);
 app.use("/circles", circlesRouter);
 app.use("/follows", followsRouter);
+app.use("/notifications", notificationsRouter);
+app.use("/feed", feedRouter);
 
 pool.query("SELECT NOW()", (err, res) => {
   if (err) {
@@ -48,6 +54,12 @@ const PORT = process.env.PORT || 5000;
 
 ensureSocialSchema(pool).catch((err) =>
   console.error("ensureSocialSchema error:", err)
+);
+ensureNotificationsSchema(pool).catch((err) =>
+  console.error("ensureNotificationsSchema error:", err)
+);
+ensureFeedSchema(pool).catch((err) =>
+  console.error("ensureFeedSchema error:", err)
 );
 
 scheduleReminders();

@@ -2,6 +2,7 @@ import express from "express";
 import pool from "../db/index.js";
 import requireUser from "../middleware/requireUser.js";
 import { sendNewFollowerEmail } from "./mailer.js";
+import { createNotification } from "../db/notifications.js";
 
 const router = express.Router();
 
@@ -112,13 +113,26 @@ router.post("/:userId", requireUser, async (req, res) => {
     res.status(201).json({ following: true });
 
     if (inserted.rows.length) {
-      try {
-        const followerRes = await pool.query(
-          "SELECT name, email FROM users WHERE id = $1",
-          [req.user.id]
-        );
-        const follower = followerRes.rows[0] || {};
+      const followerRes = await pool.query(
+        "SELECT name, email FROM users WHERE id = $1",
+        [req.user.id]
+      );
+      const follower = followerRes.rows[0] || {};
+      const followerDisplay =
+        follower.name || follower.email || "Someone";
 
+      try {
+        await createNotification(pool, {
+          userId: targetId,
+          type: "new_follower",
+          title: `${followerDisplay} started following you`,
+          link: "/friends",
+        });
+      } catch (notifyErr) {
+        console.error("New-follower notification failed:", notifyErr);
+      }
+
+      try {
         const unsub = await pool.query(
           "SELECT 1 FROM user_email_unsubscribes WHERE user_id = $1",
           [targetId]

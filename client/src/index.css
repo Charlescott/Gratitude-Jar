@@ -1052,3 +1052,518 @@ textarea:-webkit-autofill {
     font-size: 0.95rem;
   }
 }
+
+/* ---------- Feed page ---------- */
+
+.feed-page {
+  max-width: 680px;
+  margin: 1.25rem auto 3rem;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  color: var(--text-color);
+  position: relative;
+  z-index: 1;
+}
+
+/* Soft drifting orbs behind the feed — dawn/gratitude palette */
+.feed-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.feed-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+.feed-orb-1 {
+  top: -140px;
+  left: -120px;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 183, 107, 0.75),
+    rgba(255, 183, 107, 0) 70%
+  );
+  animation: feedOrbDrift1 22s ease-in-out infinite;
+}
+
+.feed-orb-2 {
+  top: 40vh;
+  right: -180px;
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(
+    circle,
+    rgba(253, 164, 175, 0.65),
+    rgba(253, 164, 175, 0) 70%
+  );
+  animation: feedOrbDrift2 26s ease-in-out infinite;
+}
+
+.feed-orb-3 {
+  bottom: -200px;
+  left: 15vw;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(
+    circle,
+    rgba(134, 239, 172, 0.55),
+    rgba(134, 239, 172, 0) 70%
+  );
+  animation: feedOrbDrift3 30s ease-in-out infinite;
+}
+
+@keyframes feedOrbDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.08); }
+}
+
+@keyframes feedOrbDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, -60px) scale(1.1); }
+}
+
+@keyframes feedOrbDrift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -70px) scale(1.12); }
+}
+
+/* Soft warm top-down vignette so the page feels like sunrise */
+body.feed-view::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 236, 210, 0.4) 0%,
+    rgba(255, 236, 210, 0) 45%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-theme="dark"] .feed-orb {
+  opacity: 0.35;
+}
+
+[data-theme="dark"] body.feed-view::before {
+  background: linear-gradient(
+    180deg,
+    rgba(80, 50, 20, 0.35) 0%,
+    rgba(80, 50, 20, 0) 45%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-orb {
+    animation: none;
+  }
+}
+
+.feed-title {
+  font-family: "Fraunces", "Playfair Display", Georgia, serif;
+  font-size: 2.75rem;
+  font-weight: 600;
+  font-variation-settings: "opsz" 144;
+  text-align: center;
+  margin: 2.75rem 0 0.6rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text-color);
+}
+
+.feed-subtitle {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  text-align: center;
+  color: var(--muted-text);
+  margin: 0 auto 2.25rem;
+  max-width: 460px;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  letter-spacing: 0.005em;
+}
+
+@media (max-width: 680px) {
+  .feed-title {
+    font-size: 2.15rem;
+    margin-top: 1.75rem;
+  }
+  .feed-subtitle {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
+  }
+}
+
+/* Header variant on /feed — frosted glass that reads the orbs underneath */
+.app-header-feed {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .app-header-feed {
+  background: rgba(30, 30, 30, 0.35) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.feed-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 18px;
+  padding: 1.3rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  color: var(--text-color);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.feed-card:hover {
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .feed-card {
+  background: rgba(40, 40, 40, 0.65);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.feed-composer {
+  padding: 1.25rem 1.5rem;
+}
+
+.feed-composer-help {
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  color: var(--accent-color, #2f80ed);
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.2rem 0.4rem;
+  margin: -0.25rem 0 0;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.feed-composer-help:hover:not(:disabled) {
+  background: rgba(47, 128, 237, 0.08);
+}
+
+.feed-composer-help:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.feed-dropdown-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.feed-dropdown-row > select {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 2.6rem;
+  padding: 0.5rem 2rem 0.5rem 0.85rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20'%3E%3Cpath fill='currentColor' d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-theme="dark"] .feed-dropdown-row > select {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.feed-dropdown-row > select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.18);
+}
+
+.feed-anon-toggle {
+  justify-content: center;
+  align-self: center;
+  font-size: 0.88rem;
+  color: var(--muted-text);
+  font-weight: 400;
+  margin-top: 0.25rem;
+}
+
+.feed-post-hero {
+  display: block;
+  margin: 0.35rem auto 0;
+  width: 100%;
+  max-width: 340px;
+  padding: 0.95rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, #2f80ed, #27ae60);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(47, 128, 237, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease,
+    filter 0.2s ease;
+}
+
+.feed-post-hero:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 32px rgba(47, 128, 237, 0.35);
+  filter: brightness(1.05);
+}
+
+.feed-post-hero:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.feed-post-hero:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.feed-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feed-avatar {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f80ed, #27ae60);
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.feed-card-meta-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-author {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+.feed-timestamp {
+  font-size: 0.82rem;
+  color: var(--muted-text);
+  margin-top: 0.05rem;
+}
+
+.feed-visibility {
+  color: var(--muted-text);
+}
+
+.feed-mood {
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.feed-card-content {
+  margin-top: 0.85rem;
+  font-size: 1.08rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.feed-anon-tag {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: var(--muted-text);
+  margin-left: 0.3rem;
+}
+
+.feed-card-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.feed-card-action {
+  background: transparent;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  color: var(--muted-text);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.feed-card-action:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .feed-card-action {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .feed-card-action:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.feed-card-action-danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.feed-card-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feed-inspiration {
+  background: linear-gradient(
+    135deg,
+    rgba(253, 230, 138, 0.35),
+    rgba(253, 164, 175, 0.25)
+  );
+  border-color: rgba(250, 204, 21, 0.25);
+}
+
+[data-theme="dark"] .feed-inspiration {
+  background: linear-gradient(
+    135deg,
+    rgba(120, 80, 20, 0.35),
+    rgba(120, 40, 70, 0.25)
+  );
+  border-color: rgba(250, 204, 21, 0.18);
+}
+
+.feed-inspiration-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .feed-inspiration-label {
+  color: #fbbf24;
+}
+
+.feed-inspiration-text {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.55;
+  margin: 0;
+  color: var(--text-color);
+}
+
+.feed-inspiration-author {
+  margin-top: 0.7rem;
+  font-size: 0.92rem;
+  color: var(--muted-text);
+  text-align: right;
+}
+
+.feed-empty {
+  text-align: center;
+  color: var(--muted-text);
+  padding: 2rem 0;
+}
+
+.feed-empty-card {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.feed-empty-sub {
+  color: var(--muted-text);
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.feed-error {
+  color: #dc2626;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.feed-load-more {
+  display: block;
+  margin: 1.25rem auto 0;
+  min-width: 150px;
+}
+
+@media (max-width: 680px) {
+  .feed-page {
+    padding: 0 0.65rem;
+    margin-top: 0.75rem;
+  }
+
+  .feed-title {
+    font-size: 1.75rem;
+  }
+
+  .feed-subtitle {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+  }
+
+  .feed-card {
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+  }
+
+  .feed-composer {
+    padding: 1rem 1.1rem;
+  }
+
+  .feed-card-content {
+    font-size: 1rem;
+  }
+
+  .feed-inspiration-text {
+    font-size: 1.08rem;
+  }
+
+  .feed-avatar {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    font-size: 0.88rem;
+  }
+}

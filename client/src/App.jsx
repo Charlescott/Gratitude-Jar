@@ -2,6 +2,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
   useLocation,
 } from "react-router-dom";
@@ -16,6 +17,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import RemindersPage from "./pages/Reminders";
 import Friends from "./pages/Friends";
+import Feed from "./pages/Feed";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -51,7 +53,7 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
         setUser(null);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        const protectedPaths = ["/entries", "/reminders", "/circles", "/friends", "/admin"];
+        const protectedPaths = ["/entries", "/reminders", "/circles", "/friends", "/feed", "/admin"];
         if (protectedPaths.some((p) => location.pathname.startsWith(p))) {
           navigate("/", { replace: true });
         }
@@ -98,7 +100,7 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
       }
     }
 
-    navigate("/entries");
+    navigate("/feed");
   }
 
   function handleLogout() {
@@ -140,11 +142,25 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
         <Route
           path="/"
           element={
-            <Home
-              isAuthenticated={isAuthenticated}
-              theme={theme}
-              setTheme={setTheme} // pass theme toggle to Home
-            />
+            isAuthenticated ? (
+              <Navigate to="/feed" replace />
+            ) : (
+              <Home
+                isAuthenticated={isAuthenticated}
+                theme={theme}
+                setTheme={setTheme} // pass theme toggle to Home
+              />
+            )
+          }
+        />
+        <Route
+          path="/feed"
+          element={
+            isAuthenticated ? (
+              <Feed token={token} />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
           }
         />
         <Route
