@@ -23,9 +23,17 @@ export default function GratitudeEntries({ token }) {
     happy: "😊",
     calm: "😌",
     neutral: "😐",
-    low: "😔",
-    stressed: "😤",
     grateful: "🙏",
+    blessed: "🙌",
+    inspired: "✨",
+    loved: "🥰",
+    hopeful: "🌱",
+    peaceful: "🕊️",
+    thankful: "💖",
+    joyful: "😄",
+    content: "😇",
+    uplifted: "🌤️",
+    cherished: "💝",
   };
 
   const VISIBILITY_LABEL = {
@@ -251,9 +259,17 @@ export default function GratitudeEntries({ token }) {
               <option value="happy">😊 Happy</option>
               <option value="calm">😌 Calm</option>
               <option value="neutral">😐 Neutral</option>
-              <option value="low">😔 Low</option>
-              <option value="stressed">😤 Stressed</option>
               <option value="grateful">🙏 Grateful</option>
+              <option value="blessed">🙌 Blessed</option>
+              <option value="inspired">✨ Inspired</option>
+              <option value="loved">🥰 Loved</option>
+              <option value="hopeful">🌱 Hopeful</option>
+              <option value="peaceful">🕊️ Peaceful</option>
+              <option value="thankful">💖 Thankful</option>
+              <option value="joyful">😄 Joyful</option>
+              <option value="content">😇 Content</option>
+              <option value="uplifted">🌤️ Uplifted</option>
+              <option value="cherished">💝 Cherished</option>
             </select>
 
             <select

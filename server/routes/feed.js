@@ -27,7 +27,8 @@ router.get("/", requireUser, async (req, res) => {
          ge.created_at,
          ge.user_id,
          u.name AS author_name,
-         u.email AS author_email
+         u.email AS author_email,
+         u.avatar_url AS author_avatar_url
        FROM gratitude_entries ge
        JOIN users u ON u.id = ge.user_id
        WHERE (
@@ -56,6 +57,7 @@ router.get("/", requireUser, async (req, res) => {
           ...row,
           author_name: null,
           author_email: null,
+          author_avatar_url: null,
           user_id: null,
           is_mine: false,
         };

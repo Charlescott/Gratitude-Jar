@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import Avatar from "../components/Avatar";
 
 const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
 
@@ -117,7 +118,15 @@ export default function Friends() {
       type="button"
       className={`btn ${tab === id ? "btn-secondary" : ""}`}
       onClick={() => setTab(id)}
-      style={{ flex: 1 }}
+      style={{
+        flex: "1 1 0",
+        minWidth: 0,
+        padding: "0.55rem 0.5rem",
+        fontSize: "0.9rem",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
     >
       {label}
     </button>
@@ -234,22 +243,36 @@ function UserRow({ user, isFollowing, onFollow, onUnfollow }) {
         borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>
-          {user.name || user.email}
-        </div>
-        {user.name && (
-          <div
-            style={{
-              fontSize: "0.85rem",
-              color: "var(--muted-text)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {user.email}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.65rem",
+          minWidth: 0,
+        }}
+      >
+        <Avatar
+          src={user.avatar_url}
+          name={user.name || user.email}
+          size={36}
+        />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>
+            {user.name || user.email}
           </div>
-        )}
+          {user.name && (
+            <div
+              style={{
+                fontSize: "0.85rem",
+                color: "var(--muted-text)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {user.email}
+            </div>
+          )}
+        </div>
       </div>
       {isFollowing ? (
         <button

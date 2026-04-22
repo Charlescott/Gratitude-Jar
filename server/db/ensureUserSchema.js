@@ -38,6 +38,10 @@ export default async function ensureUserSchema(pool, { adminEmail } = {}) {
         `ALTER TABLE users
          ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`
       );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS avatar_url TEXT`
+      );
 
       const emailToPromote = normalizeEmail(adminEmail);
       if (emailToPromote) {

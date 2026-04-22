@@ -14,7 +14,7 @@ router.get("/search", requireUser, async (req, res) => {
   try {
     const pattern = `%${q}%`;
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name,
+      `SELECT u.id, u.email, u.name, u.avatar_url,
               EXISTS (
                 SELECT 1 FROM follows f
                 WHERE f.follower_id = $1 AND f.followee_id = u.id
@@ -36,7 +36,7 @@ router.get("/search", requireUser, async (req, res) => {
 router.get("/following", requireUser, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name, f.created_at AS followed_at
+      `SELECT u.id, u.email, u.name, u.avatar_url, f.created_at AS followed_at
        FROM follows f
        JOIN users u ON u.id = f.followee_id
        WHERE f.follower_id = $1
@@ -53,7 +53,7 @@ router.get("/following", requireUser, async (req, res) => {
 router.get("/followers", requireUser, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.email, u.name, f.created_at AS followed_at
+      `SELECT u.id, u.email, u.name, u.avatar_url, f.created_at AS followed_at
        FROM follows f
        JOIN users u ON u.id = f.follower_id
        WHERE f.followee_id = $1

@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import logo from "../assets/logo.png";
 import NotificationBell from "./NotificationBell";
+import Avatar from "./Avatar";
 
 export default function Header({ token, user, onLogout, theme, setTheme }) {
   const location = useLocation();
@@ -118,8 +119,18 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
             <button
               className="btn btn-secondary"
               onClick={() => setProfileOpen((prev) => !prev)}
-              style={profileButtonStyle}
+              style={{
+                ...(profileButtonStyle || {}),
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
             >
+              <Avatar
+                src={user?.avatar_url}
+                name={user?.name || user?.email}
+                size={isMobile ? 24 : 28}
+              />
               Profile
             </button>
 
@@ -186,6 +197,14 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
                 style={{ padding: "0.5rem 1rem" }}
               >
                 Friends
+              </Link>
+              <Link
+                to="/settings"
+                className="dropdown-item"
+                onClick={() => setProfileOpen(false)}
+                style={{ padding: "0.5rem 1rem" }}
+              >
+                Settings
               </Link>
               {isAdmin && (
                 <Link

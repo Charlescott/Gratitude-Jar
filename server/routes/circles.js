@@ -200,6 +200,7 @@ router.get("/:id/members", requireUser, async (req, res) => {
       SELECT
         u.id,
         u.name,
+        u.avatar_url,
         (c.owner_id = u.id) AS is_owner
       FROM circle_memberships cm
       JOIN users u ON u.id = cm.user_id

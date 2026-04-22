@@ -88,6 +88,52 @@ export async function fetchMe(token) {
   return result;
 }
 
+export async function updateProfile(token, updates) {
+  const res = await fetch(`${API}/auth/me`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(updates),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to update profile");
+  return result;
+}
+
+export async function changePassword(token, current_password, new_password) {
+  const res = await fetch(`${API}/auth/me/password`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ current_password, new_password }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to change password");
+  return result;
+}
+
+export async function presignAvatarUpload(token, contentType, contentLength) {
+  const res = await fetch(`${API}/auth/me/avatar/presign`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      content_type: contentType,
+      content_length: contentLength,
+    }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to prepare upload");
+  return result;
+}
+
+export async function removeAvatar(token) {
+  const res = await fetch(`${API}/auth/me/avatar`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to remove avatar");
+  return result;
+}
+
 export async function fetchAdminOverview(token) {
   const res = await fetch(`${API}/admin/overview`, {
     headers: authHeaders(token),

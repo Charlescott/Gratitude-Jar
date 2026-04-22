@@ -10,7 +10,18 @@ export default function NotificationBell({ token }) {
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 480 : false
+  );
   const panelRef = useRef(null);
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth <= 480);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const authFetch = useCallback(
     (path, options = {}) =>
@@ -153,9 +164,11 @@ export default function NotificationBell({ token }) {
 
       <div
         style={{
-          position: "absolute",
-          right: 0,
-          marginTop: "0.5rem",
+          position: isMobile ? "fixed" : "absolute",
+          top: isMobile ? "3.5rem" : undefined,
+          right: isMobile ? "0.5rem" : 0,
+          left: isMobile ? "0.5rem" : undefined,
+          marginTop: isMobile ? 0 : "0.5rem",
           background: "var(--bg-color)",
           border: "1px solid rgba(15, 23, 42, 0.12)",
           backdropFilter: "blur(10px)",
@@ -165,8 +178,8 @@ export default function NotificationBell({ token }) {
           color: "var(--text-color)",
           display: "flex",
           flexDirection: "column",
-          width: "320px",
-          maxWidth: "90vw",
+          width: isMobile ? "auto" : "320px",
+          maxWidth: isMobile ? undefined : "90vw",
           zIndex: 20,
           opacity: open ? 1 : 0,
           transform: open ? "translateY(0)" : "translateY(-15px)",

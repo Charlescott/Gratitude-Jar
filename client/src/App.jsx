@@ -20,6 +20,7 @@ import Friends from "./pages/Friends";
 import Feed from "./pages/Feed";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
+import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import CirclesLayout from "./pages/circles/CirclesLayout";
@@ -187,6 +188,30 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
           path="/friends"
           element={
             isAuthenticated ? <Friends /> : <Login onLogin={handleLogin} />
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            isAuthenticated ? (
+              <Settings
+                token={token}
+                onUserUpdated={(patch) => {
+                  setUser((prev) => {
+                    const next = { ...(prev || {}), ...patch };
+                    try {
+                      localStorage.setItem("user", JSON.stringify(next));
+                    } catch {
+                      // ignore
+                    }
+                    return next;
+                  });
+                }}
+              />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
           }
         />
 

@@ -9,6 +9,7 @@ import {
   sendAccountVerificationEmail,
   sendPasswordResetEmail,
 } from "./mailer.js";
+import { presignAvatarUpload, deleteAvatar, isR2Configured } from "../lib/r2.js";
 
 const router = express.Router();
 
@@ -134,6 +135,7 @@ router.post("/login", async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        avatar_url: user.avatar_url || null,
         is_admin: Boolean(user.is_admin),
       },
     });
@@ -147,7 +149,7 @@ router.get("/me", requireUser, async (req, res) => {
   try {
     await ensureAuthSchema();
     const { rows } = await pool.query(
-      `SELECT id, email, name, created_at, last_login_at, is_admin
+      `SELECT id, email, name, avatar_url, created_at, last_login_at, is_admin
        FROM users
        WHERE id = $1`,
       [req.user.id]
@@ -160,6 +162,7 @@ router.get("/me", requireUser, async (req, res) => {
       id: user.id,
       email: user.email,
       name: user.name,
+      avatar_url: user.avatar_url || null,
       created_at: user.created_at,
       last_login_at: user.last_login_at,
       is_admin: Boolean(user.is_admin),
@@ -306,6 +309,179 @@ router.post("/reset-password", async (req, res) => {
   } catch (err) {
     console.error("Password reset error:", err);
     return res.status(400).json({ error: "Reset link is invalid or expired." });
+  }
+});
+
+router.patch("/me", requireUser, async (req, res) => {
+  const { name, email, avatar_url } = req.body || {};
+  const updates = [];
+  const values = [];
+  let idx = 1;
+
+  if (name !== undefined) {
+    const trimmed = String(name).trim();
+    if (trimmed.length === 0 || trimmed.length > 80) {
+      return res
+        .status(400)
+        .json({ error: "Nickname must be between 1 and 80 characters" });
+    }
+    updates.push(`name = $${idx++}`);
+    values.push(trimmed);
+  }
+
+  if (email !== undefined) {
+    const normalized = normalizeEmail(email);
+    if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      return res.status(400).json({ error: "Invalid email address" });
+    }
+    updates.push(`email = $${idx++}`);
+    values.push(normalized);
+  }
+
+  if (avatar_url !== undefined) {
+    if (avatar_url !== null && typeof avatar_url !== "string") {
+      return res.status(400).json({ error: "Invalid avatar_url" });
+    }
+    updates.push(`avatar_url = $${idx++}`);
+    values.push(avatar_url || null);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+
+  try {
+    await ensureAuthSchema();
+
+    let previousAvatar = null;
+    if (avatar_url !== undefined) {
+      const prev = await pool.query(
+        "SELECT avatar_url FROM users WHERE id = $1",
+        [req.user.id]
+      );
+      previousAvatar = prev.rows[0]?.avatar_url || null;
+    }
+
+    values.push(req.user.id);
+    const { rows } = await pool.query(
+      `UPDATE users SET ${updates.join(", ")}
+       WHERE id = $${idx}
+       RETURNING id, email, name, avatar_url, is_admin`,
+      values
+    );
+
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (
+      previousAvatar &&
+      previousAvatar !== user.avatar_url &&
+      isR2Configured()
+    ) {
+      deleteAvatar(previousAvatar).catch(() => {});
+    }
+
+    return res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar_url: user.avatar_url || null,
+      is_admin: Boolean(user.is_admin),
+    });
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(409).json({ error: "Email already in use" });
+    }
+    console.error("Update profile error:", err);
+    return res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+router.post("/me/avatar/presign", requireUser, async (req, res) => {
+  if (!isR2Configured()) {
+    return res.status(503).json({
+      error:
+        "Avatar uploads are not configured on the server. Ask an admin to set R2 env vars.",
+    });
+  }
+  const { content_type, content_length } = req.body || {};
+  try {
+    const result = await presignAvatarUpload({
+      userId: req.user.id,
+      contentType: content_type,
+      contentLength: Number(content_length),
+    });
+    return res.json(result);
+  } catch (err) {
+    console.error("Avatar presign error:", err);
+    return res.status(400).json({ error: err.message || "Failed to presign" });
+  }
+});
+
+router.delete("/me/avatar", requireUser, async (req, res) => {
+  try {
+    await ensureAuthSchema();
+    const { rows } = await pool.query(
+      "SELECT avatar_url FROM users WHERE id = $1",
+      [req.user.id]
+    );
+    const previous = rows[0]?.avatar_url;
+
+    await pool.query(
+      "UPDATE users SET avatar_url = NULL WHERE id = $1",
+      [req.user.id]
+    );
+
+    if (previous && isR2Configured()) {
+      deleteAvatar(previous).catch(() => {});
+    }
+
+    return res.json({ avatar_url: null });
+  } catch (err) {
+    console.error("Avatar delete error:", err);
+    return res.status(500).json({ error: "Failed to remove avatar" });
+  }
+});
+
+router.post("/me/password", requireUser, async (req, res) => {
+  const { current_password, new_password } = req.body || {};
+
+  if (!current_password || !new_password) {
+    return res
+      .status(400)
+      .json({ error: "Current and new password are required" });
+  }
+
+  if (String(new_password).length < 8) {
+    return res
+      .status(400)
+      .json({ error: "New password must be at least 8 characters" });
+  }
+
+  try {
+    await ensureAuthSchema();
+    const { rows } = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1",
+      [req.user.id]
+    );
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const valid = await bcrypt.compare(current_password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    const newHash = await bcrypt.hash(new_password, 10);
+    await pool.query(
+      "UPDATE users SET password_hash = $1 WHERE id = $2",
+      [newHash, req.user.id]
+    );
+
+    return res.json({ message: "Password updated" });
+  } catch (err) {
+    console.error("Password change error:", err);
+    return res.status(500).json({ error: "Failed to change password" });
   }
 });
 

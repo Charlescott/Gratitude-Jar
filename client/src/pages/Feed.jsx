@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getRandomQuestion } from "../api/questions";
+import Avatar from "../components/Avatar";
 
 const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 20;
@@ -8,9 +9,17 @@ const MOOD_MAP = {
   happy: "😊",
   calm: "😌",
   neutral: "😐",
-  low: "😔",
-  stressed: "😤",
   grateful: "🙏",
+  blessed: "🙌",
+  inspired: "✨",
+  loved: "🥰",
+  hopeful: "🌱",
+  peaceful: "🕊️",
+  thankful: "💖",
+  joyful: "😄",
+  content: "😇",
+  uplifted: "🌤️",
+  cherished: "💝",
 };
 
 const VISIBILITY_LABEL = {
@@ -217,9 +226,17 @@ export default function Feed({ token }) {
               <option value="happy">😊 Happy</option>
               <option value="calm">😌 Calm</option>
               <option value="neutral">😐 Neutral</option>
-              <option value="low">😔 Low</option>
-              <option value="stressed">😤 Stressed</option>
               <option value="grateful">🙏 Grateful</option>
+              <option value="blessed">🙌 Blessed</option>
+              <option value="inspired">✨ Inspired</option>
+              <option value="loved">🥰 Loved</option>
+              <option value="hopeful">🌱 Hopeful</option>
+              <option value="peaceful">🕊️ Peaceful</option>
+              <option value="thankful">💖 Thankful</option>
+              <option value="joyful">😄 Joyful</option>
+              <option value="content">😇 Content</option>
+              <option value="uplifted">🌤️ Uplifted</option>
+              <option value="cherished">💝 Cherished</option>
             </select>
 
             <select
@@ -325,7 +342,7 @@ function EntryCard({ entry, onUpdate, onDelete }) {
   const authorDisplay = displayAnonymous
     ? "Anonymous"
     : entry.author_name || entry.author_email || "Anonymous";
-  const initials = getInitials(authorDisplay);
+  const avatarUrl = displayAnonymous ? null : entry.author_avatar_url;
 
   function startEdit() {
     setContent(entry.content);
@@ -395,9 +412,17 @@ function EntryCard({ entry, onUpdate, onDelete }) {
               <option value="happy">😊 Happy</option>
               <option value="calm">😌 Calm</option>
               <option value="neutral">😐 Neutral</option>
-              <option value="low">😔 Low</option>
-              <option value="stressed">😤 Stressed</option>
               <option value="grateful">🙏 Grateful</option>
+              <option value="blessed">🙌 Blessed</option>
+              <option value="inspired">✨ Inspired</option>
+              <option value="loved">🥰 Loved</option>
+              <option value="hopeful">🌱 Hopeful</option>
+              <option value="peaceful">🕊️ Peaceful</option>
+              <option value="thankful">💖 Thankful</option>
+              <option value="joyful">😄 Joyful</option>
+              <option value="content">😇 Content</option>
+              <option value="uplifted">🌤️ Uplifted</option>
+              <option value="cherished">💝 Cherished</option>
             </select>
 
             <select
@@ -461,9 +486,12 @@ function EntryCard({ entry, onUpdate, onDelete }) {
   return (
     <article className="feed-card">
       <div className="feed-card-meta">
-        <div className="feed-avatar" aria-hidden="true">
-          {initials}
-        </div>
+        <Avatar
+          className="feed-avatar"
+          src={avatarUrl}
+          name={authorDisplay}
+          size={42}
+        />
         <div className="feed-card-meta-text">
           <div className="feed-author">
             {authorDisplay}
@@ -529,17 +557,6 @@ function InspirationCard({ quote }) {
       )}
     </article>
   );
-}
-
-function getInitials(name) {
-  if (!name) return "?";
-  const clean = String(name).trim();
-  if (clean === "Anonymous") return "?";
-  const parts = clean.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return clean.slice(0, 2).toUpperCase();
 }
 
 function formatTime(iso) {
