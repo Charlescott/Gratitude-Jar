@@ -732,6 +732,86 @@ ${verifyUrl}
   });
 }
 
+export async function sendEmailChangeVerificationEmail(
+  to,
+  { recipientName, verifyUrl, currentEmail }
+) {
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+
+  const subject = "Confirm your new Gratitude Jar email";
+  const text = `Hi ${recipientName || "there"},
+
+We received a request to change the email on your Gratitude Jar account${
+    currentEmail ? ` (currently ${currentEmail})` : ""
+  } to this address.
+
+If this was you, confirm the change:
+${verifyUrl}
+
+If you didn't request this, you can ignore this email — your account email will not change.
+`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <p>Hi ${recipientName || "there"},</p>
+      <p>We received a request to change the email on your Gratitude Jar account${
+        currentEmail
+          ? ` (currently <strong>${currentEmail}</strong>)`
+          : ""
+      } to this address.</p>
+      <p>If this was you, confirm the change:</p>
+      <p>
+        <a
+          href="${verifyUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Confirm Email Change
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${verifyUrl}" style="color:#2f80ed; text-decoration:underline;">${verifyUrl}</a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If you didn't request this, ignore this email — your account email will not change.
+      </p>
+    </div>
+  `;
+
+  const entityRefId = `change-email-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  await sendAppEmail({
+    to,
+    from,
+    supportAddress,
+    subject,
+    text,
+    html,
+    entityRefId,
+    messageId,
+  });
+}
+
 export async function sendPasswordResetEmail(to, { recipientName, resetUrl }) {
   const from = resolveFromAddress();
   assertValidFromAddress(from);

@@ -42,6 +42,18 @@ export default async function ensureUserSchema(pool, { adminEmail } = {}) {
         `ALTER TABLE users
          ADD COLUMN IF NOT EXISTS avatar_url TEXT`
       );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS pending_email TEXT`
+      );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS pending_email_jti TEXT`
+      );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS pending_email_expires_at TIMESTAMPTZ`
+      );
 
       const emailToPromote = normalizeEmail(adminEmail);
       if (emailToPromote) {

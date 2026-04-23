@@ -1,6 +1,6 @@
+import "./loadEnv.js"; // MUST be first — loads env before any module reads process.env
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import pool from "./db/index.js";
 import questionsRouter from "./routes/questions.js";
 import authRouter from "./routes/auth.js";
@@ -16,8 +16,12 @@ import ensureSocialSchema from "./db/ensureSocialSchema.js";
 import ensureNotificationsSchema from "./db/ensureNotificationsSchema.js";
 import ensureFeedSchema from "./db/ensureFeedSchema.js";
 
-dotenv.config({
-  path: process.env.NODE_ENV === "production" ? ".env" : ".env.local",
+console.log("R2 configured?", {
+  hasAccount: !!process.env.R2_ACCOUNT_ID,
+  hasKey: !!process.env.R2_ACCESS_KEY_ID,
+  hasSecret: !!process.env.R2_SECRET_ACCESS_KEY,
+  hasBucket: !!process.env.R2_BUCKET,
+  hasPublic: !!process.env.R2_PUBLIC_BASE_URL,
 });
 
 const app = express();

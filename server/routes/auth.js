@@ -7,6 +7,7 @@ import requireUser from "../middleware/requireUser.js";
 import ensureUserSchema from "../db/ensureUserSchema.js";
 import {
   sendAccountVerificationEmail,
+  sendEmailChangeVerificationEmail,
   sendPasswordResetEmail,
 } from "./mailer.js";
 import { presignAvatarUpload, deleteAvatar, isR2Configured } from "../lib/r2.js";
@@ -149,7 +150,8 @@ router.get("/me", requireUser, async (req, res) => {
   try {
     await ensureAuthSchema();
     const { rows } = await pool.query(
-      `SELECT id, email, name, avatar_url, created_at, last_login_at, is_admin
+      `SELECT id, email, name, avatar_url, pending_email, pending_email_expires_at,
+              created_at, last_login_at, is_admin
        FROM users
        WHERE id = $1`,
       [req.user.id]
@@ -158,11 +160,17 @@ router.get("/me", requireUser, async (req, res) => {
     const user = rows[0];
     if (!user) return res.status(404).json({ error: "User not found" });
 
+    const pendingLive =
+      user.pending_email &&
+      user.pending_email_expires_at &&
+      new Date(user.pending_email_expires_at) > new Date();
+
     return res.json({
       id: user.id,
       email: user.email,
       name: user.name,
       avatar_url: user.avatar_url || null,
+      pending_email: pendingLive ? user.pending_email : null,
       created_at: user.created_at,
       last_login_at: user.last_login_at,
       is_admin: Boolean(user.is_admin),
@@ -204,6 +212,85 @@ router.get("/verify-email", async (req, res) => {
   } catch (err) {
     console.error("Email verification error:", err);
     return res.status(400).send("Verification link is invalid or expired.");
+  }
+});
+
+router.get("/confirm-email-change", async (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.status(400).send("Missing confirmation token.");
+  }
+
+  try {
+    await ensureAuthSchema();
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (payload?.typ !== "change_email" || !payload?.uid || !payload?.new_email) {
+      return res.status(400).send("Invalid confirmation token.");
+    }
+
+    const jti = payload?.jti;
+    if (!jti) {
+      return res.status(400).send("Invalid confirmation token.");
+    }
+
+    const newEmail = normalizeEmail(payload.new_email);
+
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2",
+      [newEmail, payload.uid]
+    );
+    if (existing.rows.length > 0) {
+      return res
+        .status(409)
+        .send(
+          "That email is already in use by another account. Your email was not changed."
+        );
+    }
+
+    const update = await pool.query(
+      `UPDATE users
+       SET email = $1,
+           email_verified = TRUE,
+           pending_email = NULL,
+           pending_email_jti = NULL,
+           pending_email_expires_at = NULL
+       WHERE id = $2
+         AND pending_email_jti = $3
+         AND pending_email_expires_at > NOW()
+         AND LOWER(pending_email) = LOWER($1)
+       RETURNING id`,
+      [newEmail, payload.uid, jti]
+    );
+
+    if (update.rowCount === 0) {
+      return res
+        .status(400)
+        .send("This confirmation link is invalid or has expired.");
+    }
+
+    return res.status(200).send(`
+      <html>
+        <head><title>Email Updated</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2>Email updated</h2>
+          <p>Your account email is now <strong>${newEmail}</strong>. You can return to the app — you may need to log in again with the new address.</p>
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    if (err.code === "23505") {
+      return res
+        .status(409)
+        .send(
+          "That email is already in use by another account. Your email was not changed."
+        );
+    }
+    console.error("Email change confirmation error:", err);
+    return res
+      .status(400)
+      .send("This confirmation link is invalid or has expired.");
   }
 });
 
@@ -329,13 +416,13 @@ router.patch("/me", requireUser, async (req, res) => {
     values.push(trimmed);
   }
 
+  let requestedEmail = null;
   if (email !== undefined) {
     const normalized = normalizeEmail(email);
     if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
       return res.status(400).json({ error: "Invalid email address" });
     }
-    updates.push(`email = $${idx++}`);
-    values.push(normalized);
+    requestedEmail = normalized;
   }
 
   if (avatar_url !== undefined) {
@@ -346,7 +433,7 @@ router.patch("/me", requireUser, async (req, res) => {
     values.push(avatar_url || null);
   }
 
-  if (updates.length === 0) {
+  if (updates.length === 0 && requestedEmail === null) {
     return res.status(400).json({ error: "No fields to update" });
   }
 
@@ -362,15 +449,25 @@ router.patch("/me", requireUser, async (req, res) => {
       previousAvatar = prev.rows[0]?.avatar_url || null;
     }
 
-    values.push(req.user.id);
-    const { rows } = await pool.query(
-      `UPDATE users SET ${updates.join(", ")}
-       WHERE id = $${idx}
-       RETURNING id, email, name, avatar_url, is_admin`,
-      values
-    );
+    let user;
+    if (updates.length > 0) {
+      values.push(req.user.id);
+      const { rows } = await pool.query(
+        `UPDATE users SET ${updates.join(", ")}
+         WHERE id = $${idx}
+         RETURNING id, email, name, avatar_url, pending_email, is_admin`,
+        values
+      );
+      user = rows[0];
+    } else {
+      const { rows } = await pool.query(
+        `SELECT id, email, name, avatar_url, pending_email, is_admin
+         FROM users WHERE id = $1`,
+        [req.user.id]
+      );
+      user = rows[0];
+    }
 
-    const user = rows[0];
     if (!user) return res.status(404).json({ error: "User not found" });
 
     if (
@@ -381,12 +478,70 @@ router.patch("/me", requireUser, async (req, res) => {
       deleteAvatar(previousAvatar).catch(() => {});
     }
 
+    let pendingEmail = user.pending_email || null;
+    let emailVerificationMessage = null;
+
+    if (requestedEmail) {
+      if (requestedEmail === user.email) {
+        return res
+          .status(400)
+          .json({ error: "That is already your email address" });
+      }
+
+      const existing = await pool.query(
+        "SELECT id FROM users WHERE LOWER(email) = LOWER($1) AND id <> $2",
+        [requestedEmail, req.user.id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: "Email already in use" });
+      }
+
+      const jti = crypto.randomUUID();
+      await pool.query(
+        `UPDATE users
+         SET pending_email = $1,
+             pending_email_jti = $2,
+             pending_email_expires_at = NOW() + INTERVAL '24 hours'
+         WHERE id = $3`,
+        [requestedEmail, jti, req.user.id]
+      );
+      pendingEmail = requestedEmail;
+
+      const apiBaseUrl = getApiBaseUrl(req);
+      const verifyToken = jwt.sign(
+        {
+          typ: "change_email",
+          uid: req.user.id,
+          new_email: requestedEmail,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h", jwtid: jti }
+      );
+      const verifyUrl = `${apiBaseUrl}/auth/confirm-email-change?token=${encodeURIComponent(
+        verifyToken
+      )}`;
+
+      sendEmailChangeVerificationEmail(requestedEmail, {
+        recipientName: user.name,
+        verifyUrl,
+        currentEmail: user.email,
+      }).catch((err) =>
+        console.error("Email-change verification send error:", err)
+      );
+
+      emailVerificationMessage = `We sent a confirmation link to ${requestedEmail}. Your email will change once you click it.`;
+    }
+
     return res.json({
       id: user.id,
       email: user.email,
       name: user.name,
       avatar_url: user.avatar_url || null,
+      pending_email: pendingEmail,
       is_admin: Boolean(user.is_admin),
+      ...(emailVerificationMessage
+        ? { message: emailVerificationMessage }
+        : {}),
     });
   } catch (err) {
     if (err.code === "23505") {

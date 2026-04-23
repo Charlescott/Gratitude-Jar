@@ -257,13 +257,9 @@ function NicknameSection({ token, user, onUpdated }) {
 
   return (
     <Section title="Nickname">
-      <form
-        onSubmit={handleSave}
-        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-      >
+      <form onSubmit={handleSave} style={formStyle}>
         <input
           type="text"
-          className="input"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={80}
@@ -289,6 +285,7 @@ function EmailSection({ token, user, onUpdated }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const pendingEmail = user?.pending_email || null;
 
   async function handleSave(e) {
     e.preventDefault();
@@ -299,8 +296,17 @@ function EmailSection({ token, user, onUpdated }) {
     setMessage("");
     try {
       const updated = await updateProfile(token, { email: trimmed });
-      onUpdated({ email: updated.email });
-      setMessage("Email updated.");
+      onUpdated({
+        email: updated.email,
+        pending_email: updated.pending_email || null,
+      });
+      setMessage(
+        updated.message ||
+          (updated.pending_email
+            ? `We sent a confirmation link to ${updated.pending_email}. Your email will change once you click it.`
+            : "Email updated.")
+      );
+      setEmail(updated.email);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -310,13 +316,25 @@ function EmailSection({ token, user, onUpdated }) {
 
   return (
     <Section title="Email">
-      <form
-        onSubmit={handleSave}
-        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-      >
+      {pendingEmail && (
+        <p
+          style={{
+            margin: 0,
+            padding: "0.6rem 0.8rem",
+            borderRadius: 8,
+            background: "rgba(37, 99, 235, 0.08)",
+            color: "var(--text-color)",
+            fontSize: "0.9rem",
+          }}
+        >
+          Pending change to <strong>{pendingEmail}</strong> — check that inbox
+          for a confirmation link. Your current email is still{" "}
+          <strong>{user?.email}</strong> until you confirm.
+        </p>
+      )}
+      <form onSubmit={handleSave} style={formStyle}>
         <input
           type="email"
-          className="input"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
@@ -332,7 +350,7 @@ function EmailSection({ token, user, onUpdated }) {
           }
           style={{ alignSelf: "flex-start" }}
         >
-          {saving ? "Saving…" : "Save email"}
+          {saving ? "Sending…" : "Send verification to new email"}
         </button>
         {message && <p style={{ margin: 0, color: "#059669" }}>{message}</p>}
         {error && <p style={{ margin: 0, color: "#dc2626" }}>{error}</p>}
@@ -377,13 +395,9 @@ function PasswordSection({ token }) {
 
   return (
     <Section title="Password">
-      <form
-        onSubmit={handleSave}
-        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-      >
+      <form onSubmit={handleSave} style={formStyle}>
         <input
           type="password"
-          className="input"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
           placeholder="Current password"
@@ -392,7 +406,6 @@ function PasswordSection({ token }) {
         />
         <input
           type="password"
-          className="input"
           value={next}
           onChange={(e) => setNext(e.target.value)}
           placeholder="New password (min 8 chars)"
@@ -401,7 +414,6 @@ function PasswordSection({ token }) {
         />
         <input
           type="password"
-          className="input"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           placeholder="Confirm new password"
