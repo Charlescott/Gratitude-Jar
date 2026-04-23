@@ -1,9 +1,11 @@
 import express from "express";
 import pool from "../db/index.js";
 import requireUser from "../middleware/requireUser.js";
-import { fanOutToFollowers } from "../db/notifications.js";
+import { createNotification, fanOutToFollowers } from "../db/notifications.js";
 
 const router = express.Router();
+
+const ALLOWED_REACTIONS = new Set(["❤️", "🙏", "👏", "🤗", "🎉"]);
 
 router.get("/", requireUser, async (req, res) => {
   try {
@@ -167,6 +169,123 @@ router.delete("/:id", requireUser, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Failed to delete entry" });
+  }
+});
+
+async function loadReactionSummary(entryId, userId) {
+  const counts = await pool.query(
+    `SELECT emoji, COUNT(*)::int AS count
+     FROM entry_reactions
+     WHERE entry_id = $1
+     GROUP BY emoji`,
+    [entryId]
+  );
+  const mine = await pool.query(
+    `SELECT emoji FROM entry_reactions
+     WHERE entry_id = $1 AND user_id = $2`,
+    [entryId, userId]
+  );
+  const reactions = {};
+  for (const row of counts.rows) reactions[row.emoji] = row.count;
+  return { reactions, my_reaction: mine.rows[0]?.emoji || null };
+}
+
+router.post("/:id/reactions", requireUser, async (req, res) => {
+  const entryId = Number.parseInt(req.params.id, 10);
+  if (!Number.isFinite(entryId)) {
+    return res.status(400).json({ error: "Invalid entry id" });
+  }
+  const emoji = req.body?.emoji;
+  if (!ALLOWED_REACTIONS.has(emoji)) {
+    return res.status(400).json({ error: "Unsupported reaction" });
+  }
+
+  try {
+    const entryRes = await pool.query(
+      `SELECT id, user_id, visibility, is_anonymous, content
+       FROM gratitude_entries WHERE id = $1`,
+      [entryId]
+    );
+    const entry = entryRes.rows[0];
+    if (!entry) return res.status(404).json({ error: "Entry not found" });
+    if (entry.visibility !== "public") {
+      return res.status(403).json({ error: "Reactions are only on public posts" });
+    }
+    if (entry.user_id === req.user.id) {
+      return res.status(400).json({ error: "You can't react to your own post" });
+    }
+
+    const existing = await pool.query(
+      `SELECT emoji FROM entry_reactions
+       WHERE entry_id = $1 AND user_id = $2`,
+      [entryId, req.user.id]
+    );
+    const previous = existing.rows[0]?.emoji || null;
+    const isNewReaction = !previous;
+
+    if (previous === emoji) {
+      // Tapping the same emoji removes it.
+      await pool.query(
+        `DELETE FROM entry_reactions
+         WHERE entry_id = $1 AND user_id = $2`,
+        [entryId, req.user.id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO entry_reactions (entry_id, user_id, emoji)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (entry_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji,
+           created_at = NOW()`,
+        [entryId, req.user.id, emoji]
+      );
+    }
+
+    const summary = await loadReactionSummary(entryId, req.user.id);
+    res.json({ entry_id: entryId, ...summary });
+
+    if (isNewReaction && previous !== emoji) {
+      try {
+        const reactorRes = await pool.query(
+          "SELECT name, email FROM users WHERE id = $1",
+          [req.user.id]
+        );
+        const reactor = reactorRes.rows[0] || {};
+        const reactorDisplay =
+          reactor.name || reactor.email || "Someone";
+        const preview = (entry.content || "").slice(0, 80);
+        await createNotification(pool, {
+          userId: entry.user_id,
+          type: "reaction",
+          title: `${reactorDisplay} reacted ${emoji} to your post`,
+          body: preview || null,
+          link: "/feed",
+        });
+      } catch (notifyErr) {
+        console.error("Reaction notification failed:", notifyErr);
+      }
+    }
+  } catch (err) {
+    console.error("Reaction error:", err);
+    res.status(500).json({ error: "Failed to react" });
+  }
+});
+
+router.delete("/:id/reactions", requireUser, async (req, res) => {
+  const entryId = Number.parseInt(req.params.id, 10);
+  if (!Number.isFinite(entryId)) {
+    return res.status(400).json({ error: "Invalid entry id" });
+  }
+  try {
+    await pool.query(
+      `DELETE FROM entry_reactions
+       WHERE entry_id = $1 AND user_id = $2`,
+      [entryId, req.user.id]
+    );
+    const summary = await loadReactionSummary(entryId, req.user.id);
+    res.json({ entry_id: entryId, ...summary });
+  } catch (err) {
+    console.error("Remove reaction error:", err);
+    res.status(500).json({ error: "Failed to remove reaction" });
   }
 });
 

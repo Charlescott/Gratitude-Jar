@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { getRandomQuestion } from "../api/questions";
+import { reactToEntry } from "../api";
 import Avatar from "../components/Avatar";
+
+const REACTION_PALETTE = ["❤️", "🙏", "👏", "🤗", "🎉"];
 
 const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 20;
@@ -294,21 +297,33 @@ export default function Feed({ token }) {
         </div>
       ) : (
         <>
-          {items.map((slot, idx) =>
-            slot.type === "inspiration" ? (
-              <InspirationCard
-                key={`inspiration-${slot.data.id}-${idx}`}
-                quote={slot.data}
-              />
-            ) : (
+          {items.map((slot, idx) => {
+            if (slot.type === "inspiration") {
+              return (
+                <InspirationCard
+                  key={`inspiration-${slot.data.id}-${idx}`}
+                  quote={slot.data}
+                />
+              );
+            }
+            if (slot.type === "news") {
+              return (
+                <NewsCard
+                  key={`news-${slot.data.id}-${idx}`}
+                  story={slot.data}
+                />
+              );
+            }
+            return (
               <EntryCard
                 key={`entry-${slot.data.id}`}
                 entry={slot.data}
+                token={token}
                 onUpdate={updateEntry}
                 onDelete={deleteEntry}
               />
-            )
-          )}
+            );
+          })}
 
           {hasMore && (
             <button
@@ -326,7 +341,7 @@ export default function Feed({ token }) {
   );
 }
 
-function EntryCard({ entry, onUpdate, onDelete }) {
+function EntryCard({ entry, token, onUpdate, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(entry.content);
   const [mood, setMood] = useState(entry.mood || "");
@@ -343,6 +358,12 @@ function EntryCard({ entry, onUpdate, onDelete }) {
     ? "Anonymous"
     : entry.author_name || entry.author_email || "Anonymous";
   const avatarUrl = displayAnonymous ? null : entry.author_avatar_url;
+
+  const [reactions, setReactions] = useState(entry.reactions || {});
+  const [myReaction, setMyReaction] = useState(entry.my_reaction || null);
+  const [reacting, setReacting] = useState(false);
+  const canReact =
+    !entry.is_mine && entry.visibility === "public" && Boolean(token);
 
   function startEdit() {
     setContent(entry.content);
@@ -517,6 +538,28 @@ function EntryCard({ entry, onUpdate, onDelete }) {
       </div>
       <div className="feed-card-content">{entry.content}</div>
 
+      {entry.visibility === "public" && (
+        <ReactionBar
+          reactions={reactions}
+          myReaction={myReaction}
+          canReact={canReact}
+          disabled={reacting}
+          onReact={async (emoji) => {
+            if (reacting || !canReact) return;
+            setReacting(true);
+            try {
+              const result = await reactToEntry(token, entry.id, emoji);
+              setReactions(result.reactions || {});
+              setMyReaction(result.my_reaction || null);
+            } catch (err) {
+              console.error(err);
+            } finally {
+              setReacting(false);
+            }
+          }}
+        />
+      )}
+
       {entry.is_mine && (
         <div className="feed-card-actions">
           <button
@@ -547,6 +590,61 @@ function EntryCard({ entry, onUpdate, onDelete }) {
   );
 }
 
+function ReactionBar({ reactions, myReaction, canReact, disabled, onReact }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "0.4rem",
+        marginTop: "0.6rem",
+      }}
+    >
+      {REACTION_PALETTE.map((emoji) => {
+        const count = reactions[emoji] || 0;
+        const active = myReaction === emoji;
+        const hidden = !canReact && count === 0;
+        if (hidden) return null;
+        return (
+          <button
+            key={emoji}
+            type="button"
+            onClick={canReact ? () => onReact(emoji) : undefined}
+            disabled={!canReact || disabled}
+            aria-pressed={active}
+            aria-label={`React with ${emoji}${count ? ` (${count})` : ""}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.25rem 0.6rem",
+              borderRadius: 999,
+              border: active
+                ? "1px solid rgba(37, 99, 235, 0.6)"
+                : "1px solid rgba(15, 23, 42, 0.12)",
+              background: active
+                ? "rgba(37, 99, 235, 0.12)"
+                : "transparent",
+              cursor: canReact ? "pointer" : "default",
+              fontSize: "0.95rem",
+              lineHeight: 1,
+              color: "inherit",
+              opacity: disabled ? 0.6 : 1,
+            }}
+          >
+            <span aria-hidden="true">{emoji}</span>
+            {count > 0 && (
+              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function InspirationCard({ quote }) {
   return (
     <article className="feed-card feed-inspiration">
@@ -555,6 +653,79 @@ function InspirationCard({ quote }) {
       {quote.author && (
         <div className="feed-inspiration-author">— {quote.author}</div>
       )}
+    </article>
+  );
+}
+
+function NewsCard({ story }) {
+  return (
+    <article
+      className="feed-card"
+      style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}
+    >
+      <div
+        style={{
+          fontSize: "0.78rem",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "#059669",
+        }}
+      >
+        🌍 Good news{story.source ? ` · ${story.source}` : ""}
+      </div>
+      {story.image_url && (
+        <img
+          src={story.image_url}
+          alt=""
+          loading="lazy"
+          style={{
+            width: "100%",
+            maxHeight: 220,
+            objectFit: "cover",
+            borderRadius: 12,
+            display: "block",
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+      <h3 style={{ margin: 0, fontSize: "1.05rem", lineHeight: 1.3 }}>
+        {story.title}
+      </h3>
+      {story.summary && (
+        <p style={{ margin: 0, color: "var(--muted-text)", fontSize: "0.92rem" }}>
+          {story.summary}
+        </p>
+      )}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "0.25rem",
+        }}
+      >
+        <a
+          href={story.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "#2563eb",
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            textDecoration: "none",
+          }}
+        >
+          Read full story →
+        </a>
+        {story.published_at && (
+          <span style={{ fontSize: "0.78rem", color: "var(--muted-text)" }}>
+            {formatTime(story.published_at)}
+          </span>
+        )}
+      </div>
     </article>
   );
 }

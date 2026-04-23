@@ -124,6 +124,27 @@ export async function presignAvatarUpload(token, contentType, contentLength) {
   return result;
 }
 
+export async function reactToEntry(token, entryId, emoji) {
+  const res = await fetch(`${API}/entries/${entryId}/reactions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ emoji }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to react");
+  return result;
+}
+
+export async function clearReaction(token, entryId) {
+  const res = await fetch(`${API}/entries/${entryId}/reactions`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to remove reaction");
+  return result;
+}
+
 export async function removeAvatar(token) {
   const res = await fetch(`${API}/auth/me/avatar`, {
     method: "DELETE",

@@ -4,7 +4,8 @@ import requireUser from "../middleware/requireUser.js";
 
 const router = express.Router();
 
-const INSPIRATION_EVERY = 5;
+const INSPIRATION_EVERY = 4;
+const NEWS_EVERY = 3;
 
 router.get("/", requireUser, async (req, res) => {
   const limitRaw = Number(req.query.limit);
@@ -28,7 +29,19 @@ router.get("/", requireUser, async (req, res) => {
          ge.user_id,
          u.name AS author_name,
          u.email AS author_email,
-         u.avatar_url AS author_avatar_url
+         u.avatar_url AS author_avatar_url,
+         COALESCE(
+           (SELECT jsonb_object_agg(emoji, c)
+            FROM (
+              SELECT emoji, COUNT(*)::int AS c
+              FROM entry_reactions er
+              WHERE er.entry_id = ge.id
+              GROUP BY emoji
+            ) agg),
+           '{}'::jsonb
+         ) AS reactions,
+         (SELECT emoji FROM entry_reactions
+          WHERE entry_id = ge.id AND user_id = $1) AS my_reaction
        FROM gratitude_entries ge
        JOIN users u ON u.id = ge.user_id
        WHERE (
@@ -65,24 +78,60 @@ router.get("/", requireUser, async (req, res) => {
       return { ...row, is_mine: isMine };
     });
 
+    // Independent cadence: news every NEWS_EVERY entries, plus one upfront
+    // when there are any entries at all so a young feed doesn't look bare.
+    // Inspirations every INSPIRATION_EVERY entries.
+    const newsNeeded =
+      entries.length > 0
+        ? 1 + Math.floor(entries.length / NEWS_EVERY)
+        : 0;
     const inspirationNeeded = Math.floor(entries.length / INSPIRATION_EVERY);
-    let inspirations = [];
-    if (inspirationNeeded > 0) {
-      const insRes = await pool.query(
-        `SELECT id, text, author
-         FROM inspiration_quotes
-         ORDER BY RANDOM()
-         LIMIT $1`,
-        [inspirationNeeded]
-      );
-      inspirations = insRes.rows;
-    }
+
+    const [newsRes, insRes] = await Promise.all([
+      newsNeeded > 0
+        ? pool.query(
+            `SELECT id, title, summary, url, image_url, source, published_at
+             FROM (
+               SELECT id, title, summary, url, image_url, source, published_at
+               FROM news_stories
+               WHERE hidden = FALSE
+               ORDER BY published_at DESC NULLS LAST, id DESC
+               LIMIT 60
+             ) recent
+             ORDER BY RANDOM()
+             LIMIT $1`,
+            [newsNeeded]
+          )
+        : Promise.resolve({ rows: [] }),
+      inspirationNeeded > 0
+        ? pool.query(
+            `SELECT id, text, author
+             FROM inspiration_quotes
+             ORDER BY RANDOM()
+             LIMIT $1`,
+            [inspirationNeeded]
+          )
+        : Promise.resolve({ rows: [] }),
+    ]);
+    const newsQueue = newsRes.rows.map((r) => ({ type: "news", data: r }));
+    const inspirationQueue = insRes.rows.map((r) => ({
+      type: "inspiration",
+      data: r,
+    }));
 
     const items = [];
+    // Lead with a news card if we have one and have any entries to show.
+    if (entries.length > 0 && newsQueue.length) {
+      items.push(newsQueue.shift());
+    }
     for (let i = 0; i < entries.length; i++) {
       items.push({ type: "entry", data: entries[i] });
-      if ((i + 1) % INSPIRATION_EVERY === 0 && inspirations.length) {
-        items.push({ type: "inspiration", data: inspirations.shift() });
+      const pos = i + 1;
+      if (pos % NEWS_EVERY === 0 && newsQueue.length) {
+        items.push(newsQueue.shift());
+      }
+      if (pos % INSPIRATION_EVERY === 0 && inspirationQueue.length) {
+        items.push(inspirationQueue.shift());
       }
     }
 

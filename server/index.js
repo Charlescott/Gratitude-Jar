@@ -15,6 +15,7 @@ import feedRouter from "./routes/feed.js";
 import ensureSocialSchema from "./db/ensureSocialSchema.js";
 import ensureNotificationsSchema from "./db/ensureNotificationsSchema.js";
 import ensureFeedSchema from "./db/ensureFeedSchema.js";
+import { scheduleNewsImports } from "./db/newsCron.js";
 
 console.log("R2 configured?", {
   hasAccount: !!process.env.R2_ACCOUNT_ID,
@@ -67,6 +68,7 @@ ensureFeedSchema(pool).catch((err) =>
 );
 
 scheduleReminders();
+scheduleNewsImports();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
