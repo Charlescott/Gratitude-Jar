@@ -672,7 +672,7 @@ function NewsCard({ story }) {
           color: "#059669",
         }}
       >
-        🌍 Good news{story.source ? ` · ${story.source}` : ""}
+        🌍 {story.source || "News"}
       </div>
       {story.image_url && (
         <img
