@@ -244,9 +244,24 @@ export default function NotificationBell({ token }) {
                   cursor: "pointer",
                   color: "inherit",
                   font: "inherit",
+                  width: "100%",
+                  minWidth: 0,
+                  boxSizing: "border-box",
+                  display: "block",
+                  overflow: "hidden",
                 }}
               >
-                <div style={{ fontWeight: n.read_at ? 400 : 600 }}>
+                <div
+                  style={{
+                    fontWeight: n.read_at ? 400 : 600,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    wordBreak: "break-word",
+                  }}
+                >
                   {n.title}
                 </div>
                 {n.body && (
@@ -258,6 +273,7 @@ export default function NotificationBell({ token }) {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
+                      maxWidth: "100%",
                     }}
                   >
                     {n.body}

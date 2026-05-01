@@ -22,6 +22,41 @@ export async function createNotification(
   );
 }
 
+export async function fanOutToCircleMembers(
+  pool,
+  { circleId, excludeUserId, type, title, body = null, link = null }
+) {
+  const { rowCount } = await pool.query(
+    `INSERT INTO notifications (user_id, type, title, body, link)
+     SELECT cm.user_id, $3, $4, $5, $6
+     FROM circle_memberships cm
+     WHERE cm.circle_id = $1 AND cm.user_id <> $2`,
+    [circleId, excludeUserId, type, title, body, link]
+  );
+
+  if (!rowCount) return;
+
+  await pool.query(
+    `DELETE FROM notifications
+     WHERE id IN (
+       SELECT id FROM (
+         SELECT id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY user_id
+                  ORDER BY created_at DESC, id DESC
+                ) AS rn
+         FROM notifications
+         WHERE user_id IN (
+           SELECT cm.user_id FROM circle_memberships cm
+           WHERE cm.circle_id = $1 AND cm.user_id <> $2
+         )
+       ) ranked
+       WHERE rn > $3
+     )`,
+    [circleId, excludeUserId, MAX_PER_USER]
+  );
+}
+
 export async function fanOutToFollowers(
   pool,
   { followeeId, type, title, body = null, link = null }

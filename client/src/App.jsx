@@ -158,7 +158,20 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
           path="/feed"
           element={
             isAuthenticated ? (
-              <Feed token={token} />
+              <Feed
+                token={token}
+                onUserUpdated={(patch) => {
+                  setUser((prev) => {
+                    const next = { ...(prev || {}), ...patch };
+                    try {
+                      localStorage.setItem("user", JSON.stringify(next));
+                    } catch {
+                      // ignore
+                    }
+                    return next;
+                  });
+                }}
+              />
             ) : (
               <Login onLogin={handleLogin} />
             )

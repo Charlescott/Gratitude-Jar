@@ -98,7 +98,7 @@ router.post("/", requireUser, async (req, res) => {
           type: "friend_post",
           title: `${authorDisplay} shared a gratitude`,
           body: preview,
-          link: "/feed",
+          link: `/feed?focus=${result.rows[0].id}`,
         });
       } catch (fanOutErr) {
         console.error("Friend-post fan-out failed:", fanOutErr);
@@ -258,7 +258,7 @@ router.post("/:id/reactions", requireUser, async (req, res) => {
           type: "reaction",
           title: `${reactorDisplay} reacted ${emoji} to your post`,
           body: preview || null,
-          link: "/feed",
+          link: `/feed?focus=${entry.id}`,
         });
       } catch (notifyErr) {
         console.error("Reaction notification failed:", notifyErr);

@@ -11,6 +11,7 @@ import {
   sendPasswordResetEmail,
 } from "./mailer.js";
 import { presignAvatarUpload, deleteAvatar, isR2Configured } from "../lib/r2.js";
+import { computeStreak } from "../db/streak.js";
 
 const router = express.Router();
 
@@ -165,6 +166,13 @@ router.get("/me", requireUser, async (req, res) => {
       user.pending_email_expires_at &&
       new Date(user.pending_email_expires_at) > new Date();
 
+    let streak = { current: 0, longest: 0, last_post_date: null };
+    try {
+      streak = await computeStreak(user.id);
+    } catch (streakErr) {
+      console.error("computeStreak error:", streakErr);
+    }
+
     return res.json({
       id: user.id,
       email: user.email,
@@ -174,6 +182,7 @@ router.get("/me", requireUser, async (req, res) => {
       created_at: user.created_at,
       last_login_at: user.last_login_at,
       is_admin: Boolean(user.is_admin),
+      streak,
     });
   } catch (err) {
     console.error(err);

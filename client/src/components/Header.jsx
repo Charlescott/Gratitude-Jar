@@ -108,6 +108,36 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
           position: "relative",
         }}
       >
+        {isAuthenticated && user?.streak?.current > 0 && (
+          <span
+            title={`Current streak: ${user.streak.current} day${
+              user.streak.current === 1 ? "" : "s"
+            }${
+              user.streak.longest && user.streak.longest > user.streak.current
+                ? ` · longest: ${user.streak.longest}`
+                : ""
+            }`}
+            aria-label={`Posting streak ${user.streak.current} days`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.25rem",
+              padding: isMobile ? "0.2rem 0.55rem" : "0.3rem 0.7rem",
+              borderRadius: 999,
+              background:
+                "linear-gradient(135deg, rgba(249,115,22,0.18), rgba(234,88,12,0.18))",
+              color: "#c2410c",
+              fontWeight: 700,
+              fontSize: isMobile ? "0.8rem" : "0.9rem",
+              lineHeight: 1,
+              border: "1px solid rgba(234, 88, 12, 0.25)",
+            }}
+          >
+            <span aria-hidden="true">🔥</span>
+            {user.streak.current}
+          </span>
+        )}
+
         {isAuthenticated && <NotificationBell token={token} />}
 
         {isAuthenticated && (

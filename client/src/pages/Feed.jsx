@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getRandomQuestion } from "../api/questions";
-import { reactToEntry } from "../api";
+import { fetchMe, reactToEntry } from "../api";
 import Avatar from "../components/Avatar";
 
 const REACTION_PALETTE = ["❤️", "🙏", "👏", "🤗", "🎉"];
@@ -31,13 +32,16 @@ const VISIBILITY_LABEL = {
   public: "🌍 Public",
 };
 
-export default function Feed({ token }) {
+export default function Feed({ token, onUserUpdated }) {
   const [items, setItems] = useState([]);
   const [entryOffset, setEntryOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusId = searchParams.get("focus");
+  const [highlightedId, setHighlightedId] = useState(null);
 
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
@@ -101,6 +105,39 @@ export default function Feed({ token }) {
     return () => document.body.classList.remove("feed-view");
   }, []);
 
+  // Scroll to + highlight a focused entry (when arriving via a notification link).
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const inItems = items.some(
+      (slot) => slot.type === "entry" && String(slot.data.id) === String(focusId)
+    );
+    if (!inItems) {
+      // Auto-load more pages if the entry isn't on screen yet (up to a cap).
+      if (hasMore && !loadingMore) {
+        loadFeed(entryOffset);
+      }
+      return;
+    }
+    const el = document.getElementById(`feed-entry-${focusId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedId(String(focusId));
+      const timer = setTimeout(() => setHighlightedId(null), 2400);
+      // Drop the param so a manual reload doesn't re-highlight.
+      setSearchParams({}, { replace: true });
+      return () => clearTimeout(timer);
+    }
+  }, [
+    focusId,
+    items,
+    loading,
+    hasMore,
+    loadingMore,
+    entryOffset,
+    loadFeed,
+    setSearchParams,
+  ]);
+
   async function handleHelpMeOut() {
     setLoadingPrompt(true);
     try {
@@ -135,6 +172,14 @@ export default function Feed({ token }) {
       setIsAnonymous(false);
       setPrompt(null);
       await loadFeed(0);
+      if (onUserUpdated) {
+        try {
+          const me = await fetchMe(token);
+          onUserUpdated({ streak: me.streak });
+        } catch {
+          // streak update is best-effort
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -319,6 +364,7 @@ export default function Feed({ token }) {
                 key={`entry-${slot.data.id}`}
                 entry={slot.data}
                 token={token}
+                isHighlighted={String(slot.data.id) === String(highlightedId)}
                 onUpdate={updateEntry}
                 onDelete={deleteEntry}
               />
@@ -341,7 +387,7 @@ export default function Feed({ token }) {
   );
 }
 
-function EntryCard({ entry, token, onUpdate, onDelete }) {
+function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(entry.content);
   const [mood, setMood] = useState(entry.mood || "");
@@ -505,7 +551,20 @@ function EntryCard({ entry, token, onUpdate, onDelete }) {
   }
 
   return (
-    <article className="feed-card">
+    <article
+      className="feed-card"
+      id={`feed-entry-${entry.id}`}
+      style={
+        isHighlighted
+          ? {
+              outline: "3px solid rgba(37, 99, 235, 0.55)",
+              outlineOffset: 0,
+              transition: "outline-color 1.2s ease, box-shadow 1.2s ease",
+              boxShadow: "0 0 0 6px rgba(37, 99, 235, 0.12)",
+            }
+          : undefined
+      }
+    >
       <div className="feed-card-meta">
         <Avatar
           className="feed-avatar"

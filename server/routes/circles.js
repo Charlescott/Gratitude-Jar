@@ -5,6 +5,7 @@ import {
   sendCircleEntryNotificationEmail,
   sendCircleJoinNotificationEmail,
 } from "./mailer.js";
+import { fanOutToCircleMembers } from "../db/notifications.js";
 
 const router = express.Router();
 
@@ -346,6 +347,21 @@ router.post("/:id/entries", requireUser, async (req, res) => {
     const circleName = circleResult.rows[0]?.name || "your circle";
 
     res.status(201).json(entry);
+
+    try {
+      const display = entry.is_anonymous ? "Someone" : authorName;
+      const preview = (entry.content || "").slice(0, 120);
+      await fanOutToCircleMembers(pool, {
+        circleId: id,
+        excludeUserId: req.user.id,
+        type: "circle_post",
+        title: `${display} shared in ${circleName}`,
+        body: preview || null,
+        link: `/circles/${id}`,
+      });
+    } catch (notifyErr) {
+      console.error("Circle in-app notification failed:", notifyErr);
+    }
 
     notifyCircleMembers(
       memberRecipientsResult.rows,
