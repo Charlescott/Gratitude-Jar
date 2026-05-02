@@ -359,6 +359,9 @@ export default function Feed({ token, onUserUpdated }) {
                 />
               );
             }
+            if (slot.type === "memory") {
+              return <MemoryCard key={`memory-${idx}`} data={slot.data} />;
+            }
             return (
               <EntryCard
                 key={`entry-${slot.data.id}`}
@@ -714,6 +717,83 @@ function InspirationCard({ quote }) {
       )}
     </article>
   );
+}
+
+function MemoryCard({ data }) {
+  const entries = data?.entries || [];
+  if (entries.length === 0) return null;
+  return (
+    <article
+      className="feed-card"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.65rem",
+        background:
+          "linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(217, 70, 239, 0.06))",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.78rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "#d97706",
+        }}
+      >
+        🕰️ On this day
+      </div>
+      <p
+        style={{ margin: 0, fontSize: "0.88rem", color: "var(--muted-text)" }}
+      >
+        Looking back at what you were grateful for this day in past years.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        {entries.map((entry) => {
+          const yearsAgo = yearsBetween(entry.created_at);
+          return (
+            <div
+              key={entry.id}
+              style={{
+                background: "rgba(255, 255, 255, 0.6)",
+                borderRadius: 10,
+                padding: "0.65rem 0.8rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.78rem",
+                  color: "var(--muted-text)",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                {entry.mood ? `${MOOD_MAP[entry.mood] || ""} ` : ""}
+                {yearsAgo > 0
+                  ? `${yearsAgo} year${yearsAgo === 1 ? "" : "s"} ago`
+                  : "Earlier today"}
+                {" · "}
+                {new Date(entry.created_at).toLocaleDateString()}
+              </div>
+              <div style={{ fontSize: "0.95rem" }}>{entry.content}</div>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+function yearsBetween(iso) {
+  const then = new Date(iso);
+  const now = new Date();
+  let years = now.getUTCFullYear() - then.getUTCFullYear();
+  const mNow = now.getUTCMonth();
+  const dNow = now.getUTCDate();
+  const mThen = then.getUTCMonth();
+  const dThen = then.getUTCDate();
+  if (mNow < mThen || (mNow === mThen && dNow < dThen)) years--;
+  return Math.max(0, years);
 }
 
 function NewsCard({ story }) {

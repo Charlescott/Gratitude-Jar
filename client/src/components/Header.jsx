@@ -116,6 +116,12 @@ export default function Header({ token, user, onLogout, theme, setTheme }) {
               user.streak.longest && user.streak.longest > user.streak.current
                 ? ` · longest: ${user.streak.longest}`
                 : ""
+            }${
+              user.streak.freeze_used
+                ? " · freeze used"
+                : user.streak.freeze_available
+                ? " · 1 freeze available"
+                : ""
             }`}
             aria-label={`Posting streak ${user.streak.current} days`}
             style={{

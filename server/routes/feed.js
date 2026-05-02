@@ -6,6 +6,7 @@ const router = express.Router();
 
 const INSPIRATION_EVERY = 4;
 const NEWS_EVERY = 3;
+const MEMORY_LOOKBACK_YEARS = 5;
 
 router.get("/", requireUser, async (req, res) => {
   const limitRaw = Number(req.query.limit);
@@ -56,6 +57,11 @@ router.get("/", requireUser, async (req, res) => {
            )
          )
        )
+       AND NOT EXISTS (
+         SELECT 1 FROM user_blocks b
+         WHERE (b.blocker_id = $1 AND b.blocked_id = ge.user_id)
+            OR (b.blocker_id = ge.user_id AND b.blocked_id = $1)
+       )
        ORDER BY ge.created_at DESC, ge.id DESC
        LIMIT $2 OFFSET $3`,
       [req.user.id, limit + 1, offset]
@@ -87,7 +93,8 @@ router.get("/", requireUser, async (req, res) => {
         : 0;
     const inspirationNeeded = Math.floor(entries.length / INSPIRATION_EVERY);
 
-    const [newsRes, insRes] = await Promise.all([
+    const memoryEnabled = offset === 0; // only on first page
+    const [newsRes, insRes, memoryRes] = await Promise.all([
       newsNeeded > 0
         ? pool.query(
             `SELECT id, title, summary, url, image_url, source, published_at
@@ -112,14 +119,38 @@ router.get("/", requireUser, async (req, res) => {
             [inspirationNeeded]
           )
         : Promise.resolve({ rows: [] }),
+      memoryEnabled
+        ? pool.query(
+            `SELECT id, content, mood, created_at
+             FROM gratitude_entries
+             WHERE user_id = $1
+               AND EXTRACT(MONTH FROM created_at AT TIME ZONE 'UTC')
+                   = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'UTC'))
+               AND EXTRACT(DAY FROM created_at AT TIME ZONE 'UTC')
+                   = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'UTC'))
+               AND created_at < (NOW() AT TIME ZONE 'UTC')::date
+               AND created_at >= (NOW() AT TIME ZONE 'UTC') - ($2 || ' years')::interval
+             ORDER BY created_at DESC
+             LIMIT 5`,
+            [req.user.id, MEMORY_LOOKBACK_YEARS]
+          )
+        : Promise.resolve({ rows: [] }),
     ]);
     const newsQueue = newsRes.rows.map((r) => ({ type: "news", data: r }));
     const inspirationQueue = insRes.rows.map((r) => ({
       type: "inspiration",
       data: r,
     }));
+    const memoryItem =
+      memoryRes.rows.length > 0
+        ? { type: "memory", data: { entries: memoryRes.rows } }
+        : null;
 
     const items = [];
+    // Lead with a memory card if we have one (rarer, more emotional — wins the top slot).
+    if (memoryItem) {
+      items.push(memoryItem);
+    }
     // Lead with a news card if we have one and have any entries to show.
     if (entries.length > 0 && newsQueue.length) {
       items.push(newsQueue.shift());

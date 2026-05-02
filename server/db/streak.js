@@ -31,14 +31,23 @@ export async function computeStreak(userId) {
 
   const today = dayKey(new Date());
 
-  // Current streak: only "alive" if most recent post was today or yesterday.
+  // Current streak with one freeze day allowed per streak.
+  // - Most recent post must be today, yesterday, or 2 days ago (uses freeze).
+  // - Walking backward, gap=1 always counts; one gap=2 is allowed (freeze used).
+  // - Any further gap=2 or gap>2 breaks the streak.
   let current = 0;
+  let freezeUsed = false;
   const gapToToday = daysBetween(days[0], today);
-  if (gapToToday <= 1) {
+  if (gapToToday <= 2) {
+    if (gapToToday === 2) freezeUsed = true;
     current = 1;
     for (let i = 1; i < days.length; i++) {
-      if (daysBetween(days[i], days[i - 1]) === 1) {
+      const gap = daysBetween(days[i], days[i - 1]);
+      if (gap === 1) {
         current++;
+      } else if (gap === 2 && !freezeUsed) {
+        current++;
+        freezeUsed = true;
       } else {
         break;
       }
@@ -63,5 +72,7 @@ export async function computeStreak(userId) {
     current,
     longest,
     last_post_date: days[0],
+    freeze_used: freezeUsed,
+    freeze_available: current > 0 && !freezeUsed,
   };
 }

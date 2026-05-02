@@ -10,12 +10,15 @@ import remindersRouter from "./routes/reminders.js";
 import circlesRouter from "./routes/circles.js";
 import adminRouter from "./routes/admin.js";
 import followsRouter from "./routes/follows.js";
+import blocksRouter from "./routes/blocks.js";
 import notificationsRouter from "./routes/notifications.js";
 import feedRouter from "./routes/feed.js";
 import ensureSocialSchema from "./db/ensureSocialSchema.js";
 import ensureNotificationsSchema from "./db/ensureNotificationsSchema.js";
 import ensureFeedSchema from "./db/ensureFeedSchema.js";
 import { scheduleNewsImports } from "./db/newsCron.js";
+import { scheduleStreakReminders } from "./db/streakReminderCron.js";
+import pushRouter from "./routes/push.js";
 
 console.log("R2 configured?", {
   hasAccount: !!process.env.R2_ACCOUNT_ID,
@@ -32,6 +35,8 @@ app.use(express.json());
 app.use("/reminders", remindersRouter);
 app.use("/circles", circlesRouter);
 app.use("/follows", followsRouter);
+app.use("/blocks", blocksRouter);
+app.use("/push", pushRouter);
 app.use("/notifications", notificationsRouter);
 app.use("/feed", feedRouter);
 
@@ -69,6 +74,7 @@ ensureFeedSchema(pool).catch((err) =>
 
 scheduleReminders();
 scheduleNewsImports();
+scheduleStreakReminders();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

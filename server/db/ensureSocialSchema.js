@@ -51,6 +51,46 @@ export default async function ensureSocialSchema(pool) {
           last_sent TIMESTAMPTZ
         )
       `);
+
+      // Pending follow requests
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS follow_requests (
+          id SERIAL PRIMARY KEY,
+          requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          requestee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status TEXT NOT NULL DEFAULT 'pending'
+            CHECK (status IN ('pending', 'accepted', 'denied')),
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          CHECK (requester_id <> requestee_id)
+        )
+      `);
+      // Only one pending request per (requester, requestee). Old denied/accepted rows
+      // don't block re-requesting because the partial index ignores them.
+      await pool.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS follow_requests_pending_unique
+         ON follow_requests (requester_id, requestee_id)
+         WHERE status = 'pending'`
+      );
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS follow_requests_requestee_idx
+         ON follow_requests (requestee_id, status)`
+      );
+
+      // User blocks (symmetric — application-level filters use both directions)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_blocks (
+          blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          PRIMARY KEY (blocker_id, blocked_id),
+          CHECK (blocker_id <> blocked_id)
+        )
+      `);
+      await pool.query(
+        `CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx
+         ON user_blocks (blocked_id)`
+      );
     })();
   }
 

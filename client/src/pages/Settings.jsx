@@ -7,6 +7,12 @@ import {
   updateProfile,
 } from "../api";
 import Avatar from "../components/Avatar";
+import {
+  getCurrentPushSubscription,
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "../lib/push";
 
 const AVATAR_MAX_PX = 512;
 const AVATAR_OUTPUT_TYPE = "image/webp";
@@ -110,7 +116,103 @@ export default function Settings({ token, onUserUpdated }) {
       <EmailSection token={token} user={user} onUpdated={applyUserUpdate} />
 
       <PasswordSection token={token} />
+
+      <PushSection token={token} />
     </div>
+  );
+}
+
+function PushSection({ token }) {
+  const [supported] = useState(() => isPushSupported());
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!supported) return;
+    let canceled = false;
+    (async () => {
+      try {
+        const sub = await getCurrentPushSubscription();
+        if (!canceled) setSubscribed(Boolean(sub));
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [supported]);
+
+  async function handleEnable() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await subscribeToPush(token);
+      setSubscribed(true);
+      setMessage("Push notifications enabled.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDisable() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await unsubscribeFromPush(token);
+      setSubscribed(false);
+      setMessage("Push notifications disabled.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Push notifications">
+      {!supported ? (
+        <p style={{ margin: 0, color: "var(--muted-text)" }}>
+          Your browser doesn't support push notifications.
+        </p>
+      ) : (
+        <>
+          <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>
+            Get a daily nudge if your streak is about to break. We'll only ping
+            you when there's a streak to save.
+          </p>
+          {subscribed ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={handleDisable}
+              disabled={busy}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {busy ? "…" : "Disable push notifications"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleEnable}
+              disabled={busy}
+              style={{ alignSelf: "flex-start" }}
+            >
+              {busy ? "Enabling…" : "Enable push notifications"}
+            </button>
+          )}
+          {message && <p style={{ margin: 0, color: "#059669" }}>{message}</p>}
+          {error && <p style={{ margin: 0, color: "#dc2626" }}>{error}</p>}
+        </>
+      )}
+    </Section>
   );
 }
 

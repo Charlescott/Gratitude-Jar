@@ -1209,3 +1209,231 @@ ${unsubscribeCopy}
   });
   console.log(`📧 New-follower email sent to ${to}`);
 }
+
+export async function sendFollowRequestEmail(
+  to,
+  { recipientName, recipientUserId, requesterName, requesterEmail }
+) {
+  assertEmailProviderConfigured();
+
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+  const supportEmail = getFromAddress(supportAddress) || getFromAddress(from);
+
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net").replace(/\/$/, "");
+  const apiBaseUrl = (
+    process.env.API_URL || "https://gratuity-jar-api.onrender.com"
+  ).replace(/\/$/, "");
+  const logoUrl = process.env.APP_LOGO_URL || `${appBaseUrl}/logo.png`;
+  const friendsUrl = `${appBaseUrl}/friends`;
+
+  const unsubscribeToken = createUnsubscribeToken({
+    userId: recipientUserId,
+    email: to,
+  });
+  const unsubscribeUrl = unsubscribeToken
+    ? `${apiBaseUrl}/reminders/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
+    : null;
+  const listUnsubscribe = unsubscribeUrl
+    ? `<mailto:${supportEmail}?subject=unsubscribe>, <${unsubscribeUrl}>`
+    : `<mailto:${supportEmail}?subject=unsubscribe>`;
+
+  const requesterDisplay = requesterName || requesterEmail || "Someone";
+  const subject = `${requesterDisplay} wants to follow you on Gratitude Jar`;
+  const unsubscribeCopy = unsubscribeUrl || friendsUrl;
+
+  const text = `Hi ${recipientName || "there"},
+
+${requesterDisplay} requested to follow you on Gratitude Jar.
+
+Open your friends page to accept or deny:
+${friendsUrl}
+
+Unsubscribe:
+${unsubscribeCopy}
+`;
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <div style="margin-bottom: 16px;">
+        <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+      </div>
+      <p>Hi ${escapeHtml(recipientName || "there")},</p>
+      <p style="margin: 12px 0 10px 0; font-size: 18px; font-weight: 700;">
+        ${escapeHtml(requesterDisplay)} wants to follow you.
+      </p>
+      <p>Approve or deny on your friends page.</p>
+      <p>
+        <a
+          href="${friendsUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Review request
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If the button does not display, use this link:
+        <a href="${friendsUrl}" style="color:#2f80ed; text-decoration:underline;">${friendsUrl}</a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        If you no longer want these notifications,
+        <a href="${unsubscribeCopy}" style="color:#2f80ed; text-decoration:underline;">unsubscribe</a>.
+      </p>
+    </div>
+  `;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+  const entityRefId = `follow-request-${recipientUserId || to}-${Date.now()}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendWithResend({
+      to,
+      from,
+      supportAddress,
+      subject,
+      text,
+      html,
+      listUnsubscribe,
+      entityRefId,
+      messageId,
+      unsubscribeUrl,
+    });
+    console.log(`📧 Follow-request email sent via Resend to ${to}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject,
+    text,
+    html,
+    headers: {
+      "List-Unsubscribe": listUnsubscribe,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "X-Entity-Ref-ID": entityRefId,
+      ...(unsubscribeUrl ? { "X-List-Unsubscribe-URL": unsubscribeUrl } : {}),
+    },
+    messageId,
+  });
+  console.log(`📧 Follow-request email sent to ${to}`);
+}
+
+export async function sendFriendInviteEmail(
+  to,
+  { inviterName, inviterEmail, inviteUrl }
+) {
+  assertEmailProviderConfigured();
+
+  const from = resolveFromAddress();
+  assertValidFromAddress(from);
+  const supportAddress = process.env.EMAIL_SUPPORT || from;
+
+  const appBaseUrl = (process.env.APP_URL || "https://thegratitudejar.net").replace(/\/$/, "");
+  const logoUrl = process.env.APP_LOGO_URL || `${appBaseUrl}/logo.png`;
+
+  const inviterDisplay = inviterName || inviterEmail || "Your friend";
+  const subject = `${inviterDisplay} invited you to Gratitude Jar`;
+
+  const text = `${inviterDisplay} thinks you'd like Gratitude Jar — a small place to share what you're grateful for.
+
+Join with this link:
+${inviteUrl}
+
+Hope to see you there.
+`;
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <div style="margin-bottom: 16px;">
+        <img src="${logoUrl}" alt="Gratitude Jar" width="72" height="72" style="display:block; width:72px; height:72px; border-radius: 18px;" />
+      </div>
+      <p style="margin: 12px 0 10px 0; font-size: 18px; font-weight: 700;">
+        ${escapeHtml(inviterDisplay)} invited you to Gratitude Jar.
+      </p>
+      <p>Gratitude Jar is a small, quiet place to share moments you're grateful for — and see what others are too.</p>
+      <p>
+        <a
+          href="${inviteUrl}"
+          style="
+            display:inline-block;
+            padding:12px 28px;
+            min-width:140px;
+            border-radius:999px;
+            text-align:center;
+            font-weight:600;
+            color:#ffffff !important;
+            background:#2f80ed;
+            background-image:linear-gradient(135deg, #2f80ed, #27ae60);
+            text-decoration:none !important;
+            border:1px solid #2f80ed;
+            box-shadow:0 8px 20px rgba(0,0,0,0.15);
+          "
+        >
+          Join Gratitude Jar
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #64748b;">
+        Or paste this link in your browser:
+        <a href="${inviteUrl}" style="color:#2f80ed; text-decoration:underline;">${inviteUrl}</a>
+      </p>
+    </div>
+  `;
+
+  const fromAddress = getFromAddress(from);
+  const fromDomain = getDomainFromEmail(fromAddress);
+  const entityRefId = `friend-invite-${Date.now()}-${to}`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "_"
+  );
+  const messageId = makeMessageId(entityRefId, fromDomain);
+
+  if (process.env.RESEND_API_KEY) {
+    await sendWithResend({
+      to,
+      from,
+      supportAddress,
+      subject,
+      text,
+      html,
+      entityRefId,
+      messageId,
+    });
+    console.log(`📧 Friend-invite email sent via Resend to ${to}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    replyTo: supportAddress,
+    subject,
+    text,
+    html,
+    headers: {
+      "X-Entity-Ref-ID": entityRefId,
+    },
+    messageId,
+  });
+  console.log(`📧 Friend-invite email sent to ${to}`);
+}

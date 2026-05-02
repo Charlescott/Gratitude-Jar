@@ -55,6 +55,18 @@ export default async function ensureUserSchema(pool, { adminEmail } = {}) {
          ADD COLUMN IF NOT EXISTS pending_email_expires_at TIMESTAMPTZ`
       );
 
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          endpoint TEXT NOT NULL,
+          p256dh TEXT NOT NULL,
+          auth TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE (user_id, endpoint)
+        )
+      `);
+
       const emailToPromote = normalizeEmail(adminEmail);
       if (emailToPromote) {
         await pool.query(
