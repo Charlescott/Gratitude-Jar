@@ -4,13 +4,19 @@ import Avatar from "../components/Avatar";
 const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
 
 export default function Friends() {
-  const [tab, setTab] = useState("find");
+  const [tab, setTab] = useState("friends");
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [requests, setRequests] = useState([]);
   const [blocked, setBlocked] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const actionButtonStyle = {
+    minWidth: 0,
+    padding: "0.45rem 0.75rem",
+    fontSize: "0.85rem",
+  };
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -253,11 +259,11 @@ export default function Friends() {
       style={{
         flex: "1 1 0",
         minWidth: 0,
-        padding: "0.55rem 0.4rem",
-        fontSize: "0.85rem",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
+        padding: "0.45rem 0.35rem",
+        fontSize: "0.82rem",
+        lineHeight: 1.2,
+        whiteSpace: "normal",
+        wordBreak: "break-word",
       }}
     >
       {label}
@@ -282,6 +288,7 @@ export default function Friends() {
           flexWrap: "wrap",
         }}
       >
+        {tabBtn("friends", "Friends")}
         {tabBtn("find", "Find")}
         {tabBtn("invite", "Invite")}
         {tabBtn(
@@ -295,6 +302,108 @@ export default function Friends() {
           blocked.length > 0 ? `Blocked (${blocked.length})` : "Blocked"
         )}
       </div>
+
+      {tab === "friends" && (
+        <div className="entry-card">
+          {loading ? (
+            <p>Loading…</p>
+          ) : (
+            <>
+              <section style={{ marginBottom: "1rem" }}>
+                <h2 style={{ margin: "0 0 0.65rem 0" }}>
+                  Pending requests
+                </h2>
+                {requests.length === 0 ? (
+                  <p style={{ margin: 0 }}>No pending follow requests.</p>
+                ) : (
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {requests.map((u) => (
+                      <UserRow key={u.id} user={u}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => acceptRequest(u.id)}
+                          style={actionButtonStyle}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => denyRequest(u.id)}
+                          style={actionButtonStyle}
+                        >
+                          Deny
+                        </button>
+                      </UserRow>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section style={{ marginBottom: "1rem" }}>
+                <h2 style={{ margin: "0 0 0.65rem 0" }}>Following</h2>
+                {following.length === 0 ? (
+                  <p style={{ margin: 0 }}>You are not following anyone yet.</p>
+                ) : (
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {following.map((u) => (
+                      <UserRow key={u.id} user={u}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => unfollow(u.id)}
+                          style={actionButtonStyle}
+                        >
+                          Unfollow
+                        </button>
+                        <BlockButton onClick={() => blockUser(u.id)} />
+                      </UserRow>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section>
+                <h2 style={{ margin: "0 0 0.65rem 0" }}>Followers</h2>
+                {followers.length === 0 ? (
+                  <p style={{ margin: 0 }}>No followers yet.</p>
+                ) : (
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {followers.map((u) => {
+                      const iFollow = following.some((f) => f.id === u.id);
+                      return (
+                        <UserRow key={u.id} user={u}>
+                          {iFollow ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => unfollow(u.id)}
+                              style={actionButtonStyle}
+                            >
+                              Following
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => requestFollow(u.id)}
+                              style={actionButtonStyle}
+                            >
+                              Follow back
+                            </button>
+                          )}
+                          <BlockButton onClick={() => blockUser(u.id)} />
+                        </UserRow>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      )}
 
       {tab === "find" && (
         <div className="entry-card">
@@ -318,6 +427,7 @@ export default function Friends() {
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => unfollow(u.id)}
+                    style={actionButtonStyle}
                   >
                     Following
                   </button>
@@ -327,6 +437,7 @@ export default function Friends() {
                     className="btn"
                     onClick={() => unfollow(u.id)}
                     title="Cancel request"
+                    style={actionButtonStyle}
                   >
                     Requested
                   </button>
@@ -335,6 +446,7 @@ export default function Friends() {
                     type="button"
                     className="btn"
                     onClick={() => requestFollow(u.id)}
+                    style={actionButtonStyle}
                   >
                     Follow
                   </button>
@@ -446,6 +558,7 @@ export default function Friends() {
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => acceptRequest(u.id)}
+                    style={actionButtonStyle}
                   >
                     Accept
                   </button>
@@ -453,6 +566,7 @@ export default function Friends() {
                     type="button"
                     className="btn"
                     onClick={() => denyRequest(u.id)}
+                    style={actionButtonStyle}
                   >
                     Deny
                   </button>
@@ -477,6 +591,7 @@ export default function Friends() {
                     type="button"
                     className="btn btn-secondary"
                     onClick={() => unfollow(u.id)}
+                    style={actionButtonStyle}
                   >
                     Unfollow
                   </button>
@@ -505,6 +620,7 @@ export default function Friends() {
                         type="button"
                         className="btn btn-secondary"
                         onClick={() => unfollow(u.id)}
+                        style={actionButtonStyle}
                       >
                         Following
                       </button>
@@ -512,8 +628,7 @@ export default function Friends() {
                       <button
                         type="button"
                         className="btn"
-                        onClick={() => requestFollow(u.id)}
-                      >
+                        onClick={() => requestFollow(u.id)}                        style={actionButtonStyle}                      >
                         Follow back
                       </button>
                     )}
@@ -540,6 +655,7 @@ export default function Friends() {
                     type="button"
                     className="btn"
                     onClick={() => unblockUser(u.id)}
+                    style={actionButtonStyle}
                   >
                     Unblock
                   </button>
@@ -611,6 +727,8 @@ function UserRow({ user, children }) {
           gap: "0.4rem",
           flexShrink: 0,
           alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: "flex-end",
         }}
       >
         {children}
