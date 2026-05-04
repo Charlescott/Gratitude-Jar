@@ -190,6 +190,56 @@ async function loadReactionSummary(entryId, userId) {
   return { reactions, my_reaction: mine.rows[0]?.emoji || null };
 }
 
+router.get("/:id/reactions", requireUser, async (req, res) => {
+  const entryId = Number.parseInt(req.params.id, 10);
+  if (!Number.isFinite(entryId)) {
+    return res.status(400).json({ error: "Invalid entry id" });
+  }
+  try {
+    const entryRes = await pool.query(
+      `SELECT id, user_id, visibility FROM gratitude_entries WHERE id = $1`,
+      [entryId]
+    );
+    const entry = entryRes.rows[0];
+    if (!entry) return res.status(404).json({ error: "Entry not found" });
+    if (entry.visibility !== "public") {
+      return res
+        .status(403)
+        .json({ error: "Reactions are only visible on public posts" });
+    }
+
+    const blocked = await pool.query(
+      `SELECT 1 FROM user_blocks
+       WHERE (blocker_id = $1 AND blocked_id = $2)
+          OR (blocker_id = $2 AND blocked_id = $1)
+       LIMIT 1`,
+      [req.user.id, entry.user_id]
+    );
+    if (blocked.rows.length > 0) {
+      return res.status(403).json({ error: "Not allowed" });
+    }
+
+    const reactors = await pool.query(
+      `SELECT er.user_id, er.emoji, er.created_at,
+              u.name, u.email, u.avatar_url
+       FROM entry_reactions er
+       JOIN users u ON u.id = er.user_id
+       WHERE er.entry_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM user_blocks b
+           WHERE (b.blocker_id = $2 AND b.blocked_id = er.user_id)
+              OR (b.blocker_id = er.user_id AND b.blocked_id = $2)
+         )
+       ORDER BY er.created_at DESC, er.user_id DESC`,
+      [entryId, req.user.id]
+    );
+    res.json({ entry_id: entryId, reactors: reactors.rows });
+  } catch (err) {
+    console.error("List reactors error:", err);
+    res.status(500).json({ error: "Failed to load reactors" });
+  }
+});
+
 router.post("/:id/reactions", requireUser, async (req, res) => {
   const entryId = Number.parseInt(req.params.id, 10);
   if (!Number.isFinite(entryId)) {

@@ -1409,11 +1409,88 @@ body.feed-view::before {
   margin-left: 0.3rem;
 }
 
+.feed-author-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.feed-author-link:hover {
+  text-decoration: underline;
+}
+
 .feed-card-actions {
   margin-top: 0.9rem;
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+}
+
+.feed-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.feed-reaction-pill {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: transparent;
+  overflow: hidden;
+  line-height: 1;
+}
+
+.feed-reaction-pill.is-active {
+  border-color: rgba(37, 99, 235, 0.6);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+[data-theme="dark"] .feed-reaction-pill {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.feed-reaction-emoji,
+.feed-reaction-count {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.feed-reaction-count {
+  padding-left: 0.35rem;
+  padding-right: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-left: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="dark"] .feed-reaction-count {
+  border-left-color: rgba(255, 255, 255, 0.12);
+}
+
+.feed-reaction-emoji:disabled {
+  cursor: default;
+}
+
+.feed-reaction-count:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.feed-reaction-emoji:not(:disabled):hover,
+.feed-reaction-count:not(:disabled):hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="dark"] .feed-reaction-emoji:not(:disabled):hover,
+[data-theme="dark"] .feed-reaction-count:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .feed-card-action {

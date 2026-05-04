@@ -115,6 +115,12 @@ export default function Settings({ token, onUserUpdated }) {
 
       <EmailSection token={token} user={user} onUpdated={applyUserUpdate} />
 
+      <ProfilePrivacySection
+        token={token}
+        user={user}
+        onUpdated={applyUserUpdate}
+      />
+
       <PasswordSection token={token} />
 
       <PushSection token={token} />
@@ -457,6 +463,59 @@ function EmailSection({ token, user, onUpdated }) {
         {message && <p style={{ margin: 0, color: "#059669" }}>{message}</p>}
         {error && <p style={{ margin: 0, color: "#dc2626" }}>{error}</p>}
       </form>
+    </Section>
+  );
+}
+
+function ProfilePrivacySection({ token, user, onUpdated }) {
+  const [isPublic, setIsPublic] = useState(Boolean(user?.is_profile_public));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleToggle(e) {
+    const next = e.target.checked;
+    setIsPublic(next);
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await updateProfile(token, { is_profile_public: next });
+      onUpdated({ is_profile_public: updated.is_profile_public });
+      setMessage(
+        updated.is_profile_public
+          ? "Your profile is public. Other users can view your public entries."
+          : "Your profile is private. Only you can see your entries page."
+      );
+    } catch (err) {
+      setIsPublic(!next);
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section title="Profile privacy">
+      <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted-text)" }}>
+        When public, other users can click your name or photo on the feed to
+        see all the entries you've posted with public visibility. Private and
+        friends-only entries are never shown.
+      </p>
+      <label
+        className="checkbox-label"
+        style={{ alignSelf: "flex-start", justifyContent: "flex-start" }}
+      >
+        <input
+          type="checkbox"
+          checked={isPublic}
+          onChange={handleToggle}
+          disabled={saving}
+        />
+        Make my profile public
+      </label>
+      {message && <p style={{ margin: 0, color: "#059669" }}>{message}</p>}
+      {error && <p style={{ margin: 0, color: "#dc2626" }}>{error}</p>}
     </Section>
   );
 }

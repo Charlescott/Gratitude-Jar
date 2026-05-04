@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getRandomQuestion } from "../api/questions";
-import { fetchMe, reactToEntry } from "../api";
+import { fetchEntryReactors, fetchMe, reactToEntry } from "../api";
 import Avatar from "../components/Avatar";
 
 const REACTION_PALETTE = ["❤️", "🙏", "👏", "🤗", "🎉"];
@@ -45,7 +46,7 @@ export default function Feed({ token, onUserUpdated }) {
 
   const [content, setContent] = useState("");
   const [mood, setMood] = useState("");
-  const [visibility, setVisibility] = useState("friends");
+  const [visibility, setVisibility] = useState("public");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [prompt, setPrompt] = useState(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
@@ -414,6 +415,35 @@ function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
   const canReact =
     !entry.is_mine && entry.visibility === "public" && Boolean(token);
 
+  const [reactorsAnchor, setReactorsAnchor] = useState(null);
+  const [reactors, setReactors] = useState([]);
+  const [reactorsLoading, setReactorsLoading] = useState(false);
+  const [reactorsError, setReactorsError] = useState("");
+
+  const totalReactions = Object.values(reactions).reduce(
+    (sum, n) => sum + (Number(n) || 0),
+    0
+  );
+
+  async function openReactors(event) {
+    const rect = event?.currentTarget?.getBoundingClientRect();
+    setReactorsAnchor(
+      rect
+        ? { top: rect.bottom, left: rect.left, right: rect.right }
+        : { top: 0, left: 0, right: 0 }
+    );
+    setReactorsLoading(true);
+    setReactorsError("");
+    try {
+      const data = await fetchEntryReactors(token, entry.id);
+      setReactors(data.reactors || []);
+    } catch (err) {
+      setReactorsError(err.message);
+    } finally {
+      setReactorsLoading(false);
+    }
+  }
+
   function startEdit() {
     setContent(entry.content);
     setMood(entry.mood || "");
@@ -569,15 +599,39 @@ function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
       }
     >
       <div className="feed-card-meta">
-        <Avatar
-          className="feed-avatar"
-          src={avatarUrl}
-          name={authorDisplay}
-          size={42}
-        />
+        {!displayAnonymous && entry.user_id ? (
+          <Link
+            to={`/users/${entry.user_id}`}
+            className="feed-author-link"
+            aria-label={`View ${authorDisplay}'s profile`}
+          >
+            <Avatar
+              className="feed-avatar"
+              src={avatarUrl}
+              name={authorDisplay}
+              size={42}
+            />
+          </Link>
+        ) : (
+          <Avatar
+            className="feed-avatar"
+            src={avatarUrl}
+            name={authorDisplay}
+            size={42}
+          />
+        )}
         <div className="feed-card-meta-text">
           <div className="feed-author">
-            {authorDisplay}
+            {!displayAnonymous && entry.user_id ? (
+              <Link
+                to={`/users/${entry.user_id}`}
+                className="feed-author-link"
+              >
+                {authorDisplay}
+              </Link>
+            ) : (
+              authorDisplay
+            )}
             {entry.is_mine && entry.is_anonymous && (
               <span className="feed-anon-tag"> (posted anonymously)</span>
             )}
@@ -606,6 +660,7 @@ function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
           myReaction={myReaction}
           canReact={canReact}
           disabled={reacting}
+          onShowReactors={totalReactions > 0 ? openReactors : null}
           onReact={async (emoji) => {
             if (reacting || !canReact) return;
             setReacting(true);
@@ -621,6 +676,18 @@ function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
           }}
         />
       )}
+
+      {reactorsAnchor &&
+        createPortal(
+          <ReactorsPopover
+            anchor={reactorsAnchor}
+            loading={reactorsLoading}
+            error={reactorsError}
+            reactors={reactors}
+            onClose={() => setReactorsAnchor(null)}
+          />,
+          document.body
+        )}
 
       {entry.is_mine && (
         <div className="feed-card-actions">
@@ -652,57 +719,178 @@ function EntryCard({ entry, token, isHighlighted, onUpdate, onDelete }) {
   );
 }
 
-function ReactionBar({ reactions, myReaction, canReact, disabled, onReact }) {
+function ReactionBar({
+  reactions,
+  myReaction,
+  canReact,
+  disabled,
+  onReact,
+  onShowReactors,
+}) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "0.4rem",
-        marginTop: "0.6rem",
-      }}
-    >
+    <div className="feed-reactions">
       {REACTION_PALETTE.map((emoji) => {
         const count = reactions[emoji] || 0;
         const active = myReaction === emoji;
         const hidden = !canReact && count === 0;
         if (hidden) return null;
         return (
-          <button
+          <span
             key={emoji}
-            type="button"
-            onClick={canReact ? () => onReact(emoji) : undefined}
-            disabled={!canReact || disabled}
-            aria-pressed={active}
-            aria-label={`React with ${emoji}${count ? ` (${count})` : ""}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.3rem",
-              padding: "0.25rem 0.6rem",
-              borderRadius: 999,
-              border: active
-                ? "1px solid rgba(37, 99, 235, 0.6)"
-                : "1px solid rgba(15, 23, 42, 0.12)",
-              background: active
-                ? "rgba(37, 99, 235, 0.12)"
-                : "transparent",
-              cursor: canReact ? "pointer" : "default",
-              fontSize: "0.95rem",
-              lineHeight: 1,
-              color: "inherit",
-              opacity: disabled ? 0.6 : 1,
-            }}
+            className={`feed-reaction-pill${active ? " is-active" : ""}`}
           >
-            <span aria-hidden="true">{emoji}</span>
+            <button
+              type="button"
+              className="feed-reaction-emoji"
+              onClick={canReact ? () => onReact(emoji) : undefined}
+              disabled={!canReact || disabled}
+              aria-pressed={active}
+              aria-label={`React with ${emoji}`}
+            >
+              <span aria-hidden="true">{emoji}</span>
+            </button>
             {count > 0 && (
-              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>
+              <button
+                type="button"
+                className="feed-reaction-count"
+                onClick={onShowReactors ? (e) => onShowReactors(e) : undefined}
+                disabled={!onShowReactors}
+                aria-label={`See who reacted with ${emoji} (${count})`}
+              >
                 {count}
-              </span>
+              </button>
             )}
-          </button>
+          </span>
         );
       })}
+    </div>
+  );
+}
+
+function ReactorsPopover({ anchor, loading, error, reactors, onClose }) {
+  const ref = useRef(null);
+  const [position, setPosition] = useState({
+    top: anchor.top + 8,
+    left: anchor.left,
+  });
+
+  // Close on outside click, Escape, or scroll/resize.
+  useEffect(() => {
+    function handleMouseDown(e) {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    }
+    function handleKey(e) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("scroll", onClose, true);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("scroll", onClose, true);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [onClose]);
+
+  // Clamp into viewport once we know our size.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const margin = 8;
+    const { width, height } = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let top = anchor.top + 8;
+    let left = anchor.left;
+    if (left + width + margin > vw) left = Math.max(margin, vw - width - margin);
+    if (top + height + margin > vh)
+      top = Math.max(margin, anchor.top - height - 16);
+    setPosition({ top, left });
+  }, [anchor.top, anchor.left, reactors.length, loading, error]);
+
+  return (
+    <div
+      ref={ref}
+      className="reactors-popover dropdown"
+      role="dialog"
+      aria-label="People who reacted"
+      style={{
+        position: "fixed",
+        top: position.top,
+        left: position.left,
+        background: "var(--bg-color)",
+        border: "1px solid rgba(15, 23, 42, 0.12)",
+        backdropFilter: "blur(10px)",
+        borderRadius: 12,
+        padding: "0.6rem 0",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+        color: "var(--text-color)",
+        minWidth: 240,
+        maxWidth: 320,
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          padding: "0 1rem 0.5rem",
+          fontSize: "0.78rem",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--muted-text)",
+        }}
+      >
+        Reactions
+      </div>
+      {loading ? (
+        <p style={{ margin: 0, padding: "0.5rem 1rem" }}>Loading…</p>
+      ) : error ? (
+        <p
+          style={{ margin: 0, padding: "0.5rem 1rem", color: "#dc2626" }}
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : reactors.length === 0 ? (
+        <p style={{ margin: 0, padding: "0.5rem 1rem" }}>No reactions yet.</p>
+      ) : (
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: "50vh",
+            overflowY: "auto",
+          }}
+        >
+          {reactors.map((r) => {
+            const display = r.name || r.email || "Someone";
+            return (
+              <li
+                key={r.user_id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.65rem",
+                  padding: "0.4rem 1rem",
+                }}
+              >
+                <Avatar src={r.avatar_url} name={display} size={28} />
+                <span style={{ flex: 1, fontSize: "0.92rem", fontWeight: 500 }}>
+                  {display}
+                </span>
+                <span style={{ fontSize: "1.05rem" }} aria-hidden="true">
+                  {r.emoji}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

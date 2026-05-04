@@ -54,6 +54,13 @@ export default async function ensureUserSchema(pool, { adminEmail } = {}) {
         `ALTER TABLE users
          ADD COLUMN IF NOT EXISTS pending_email_expires_at TIMESTAMPTZ`
       );
+      await pool.query(
+        `ALTER TABLE users
+         ADD COLUMN IF NOT EXISTS is_profile_public BOOLEAN DEFAULT FALSE`
+      );
+      await pool.query(
+        `UPDATE users SET is_profile_public = FALSE WHERE is_profile_public IS NULL`
+      );
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS push_subscriptions (

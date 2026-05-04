@@ -152,7 +152,7 @@ router.get("/me", requireUser, async (req, res) => {
     await ensureAuthSchema();
     const { rows } = await pool.query(
       `SELECT id, email, name, avatar_url, pending_email, pending_email_expires_at,
-              created_at, last_login_at, is_admin
+              created_at, last_login_at, is_admin, is_profile_public
        FROM users
        WHERE id = $1`,
       [req.user.id]
@@ -182,6 +182,7 @@ router.get("/me", requireUser, async (req, res) => {
       created_at: user.created_at,
       last_login_at: user.last_login_at,
       is_admin: Boolean(user.is_admin),
+      is_profile_public: Boolean(user.is_profile_public),
       streak,
     });
   } catch (err) {
@@ -409,7 +410,7 @@ router.post("/reset-password", async (req, res) => {
 });
 
 router.patch("/me", requireUser, async (req, res) => {
-  const { name, email, avatar_url } = req.body || {};
+  const { name, email, avatar_url, is_profile_public } = req.body || {};
   const updates = [];
   const values = [];
   let idx = 1;
@@ -442,6 +443,14 @@ router.patch("/me", requireUser, async (req, res) => {
     values.push(avatar_url || null);
   }
 
+  if (is_profile_public !== undefined) {
+    if (typeof is_profile_public !== "boolean") {
+      return res.status(400).json({ error: "Invalid is_profile_public" });
+    }
+    updates.push(`is_profile_public = $${idx++}`);
+    values.push(is_profile_public);
+  }
+
   if (updates.length === 0 && requestedEmail === null) {
     return res.status(400).json({ error: "No fields to update" });
   }
@@ -464,13 +473,13 @@ router.patch("/me", requireUser, async (req, res) => {
       const { rows } = await pool.query(
         `UPDATE users SET ${updates.join(", ")}
          WHERE id = $${idx}
-         RETURNING id, email, name, avatar_url, pending_email, is_admin`,
+         RETURNING id, email, name, avatar_url, pending_email, is_admin, is_profile_public`,
         values
       );
       user = rows[0];
     } else {
       const { rows } = await pool.query(
-        `SELECT id, email, name, avatar_url, pending_email, is_admin
+        `SELECT id, email, name, avatar_url, pending_email, is_admin, is_profile_public
          FROM users WHERE id = $1`,
         [req.user.id]
       );
@@ -548,6 +557,7 @@ router.patch("/me", requireUser, async (req, res) => {
       avatar_url: user.avatar_url || null,
       pending_email: pendingEmail,
       is_admin: Boolean(user.is_admin),
+      is_profile_public: Boolean(user.is_profile_public),
       ...(emailVerificationMessage
         ? { message: emailVerificationMessage }
         : {}),

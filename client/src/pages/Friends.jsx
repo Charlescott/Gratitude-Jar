@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Avatar from "../components/Avatar";
 
 const API = import.meta.env.VITE_API || import.meta.env.VITE_API_URL;
@@ -21,6 +21,17 @@ export default function Friends() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+  );
+  useEffect(() => {
+    function onResize() {
+      setIsMobile(window.innerWidth <= 768);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const token = localStorage.getItem("token");
   const currentUser = (() => {
@@ -250,6 +261,26 @@ export default function Friends() {
     }
   }
 
+  const tabs = useMemo(
+    () => [
+      { id: "friends", label: "Friends" },
+      { id: "find", label: "Find" },
+      { id: "invite", label: "Invite" },
+      {
+        id: "requests",
+        label:
+          requests.length > 0 ? `Requests (${requests.length})` : "Requests",
+      },
+      { id: "following", label: `Following (${following.length})` },
+      { id: "followers", label: `Followers (${followers.length})` },
+      {
+        id: "blocked",
+        label: blocked.length > 0 ? `Blocked (${blocked.length})` : "Blocked",
+      },
+    ],
+    [requests.length, following.length, followers.length, blocked.length]
+  );
+
   const tabBtn = (id, label) => (
     <button
       key={id}
@@ -257,13 +288,11 @@ export default function Friends() {
       className={`btn ${tab === id ? "btn-secondary" : ""}`}
       onClick={() => setTab(id)}
       style={{
-        flex: "1 1 0",
-        minWidth: 0,
-        padding: "0.45rem 0.35rem",
-        fontSize: "0.82rem",
+        flex: "0 0 auto",
+        padding: "0.45rem 0.85rem",
+        fontSize: "0.85rem",
         lineHeight: 1.2,
-        whiteSpace: "normal",
-        wordBreak: "break-word",
+        whiteSpace: "nowrap",
       }}
     >
       {label}
@@ -280,28 +309,37 @@ export default function Friends() {
         </p>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: "0.4rem",
-          margin: "0 0 1rem 0",
-          flexWrap: "wrap",
-        }}
-      >
-        {tabBtn("friends", "Friends")}
-        {tabBtn("find", "Find")}
-        {tabBtn("invite", "Invite")}
-        {tabBtn(
-          "requests",
-          requests.length > 0 ? `Requests (${requests.length})` : "Requests"
-        )}
-        {tabBtn("following", `Following (${following.length})`)}
-        {tabBtn("followers", `Followers (${followers.length})`)}
-        {tabBtn(
-          "blocked",
-          blocked.length > 0 ? `Blocked (${blocked.length})` : "Blocked"
-        )}
-      </div>
+      {isMobile ? (
+        <select
+          className="input"
+          value={tab}
+          onChange={(e) => setTab(e.target.value)}
+          aria-label="Switch section"
+          style={{
+            width: "100%",
+            margin: "0 0 1rem 0",
+            fontSize: "0.95rem",
+            padding: "0.55rem 0.75rem",
+          }}
+        >
+          {tabs.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            gap: "0.4rem",
+            margin: "0 0 1rem 0",
+            flexWrap: "wrap",
+          }}
+        >
+          {tabs.map((t) => tabBtn(t.id, t.label))}
+        </div>
+      )}
 
       {tab === "friends" && (
         <div className="entry-card">

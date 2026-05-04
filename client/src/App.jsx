@@ -18,6 +18,7 @@ import ResetPassword from "./pages/ResetPassword";
 import RemindersPage from "./pages/Reminders";
 import Friends from "./pages/Friends";
 import Feed from "./pages/Feed";
+import UserProfile from "./pages/UserProfile";
 import Circles from "./pages/circles/Circles";
 import CircleDetail from "./pages/circles/CircleDetail";
 import Settings from "./pages/Settings";
@@ -201,6 +202,17 @@ function AppRoutes({ token, setToken, user, setUser, theme, setTheme }) {
           path="/friends"
           element={
             isAuthenticated ? <Friends /> : <Login onLogin={handleLogin} />
+          }
+        />
+
+        <Route
+          path="/users/:id"
+          element={
+            isAuthenticated ? (
+              <UserProfile token={token} />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
           }
         />
 

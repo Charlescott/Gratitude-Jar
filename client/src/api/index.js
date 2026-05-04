@@ -135,6 +135,28 @@ export async function reactToEntry(token, entryId, emoji) {
   return result;
 }
 
+export async function fetchUserProfile(token, userId, { limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const res = await fetch(`${API}/users/${userId}/profile?${params}`, {
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load profile");
+  return result;
+}
+
+export async function fetchEntryReactors(token, entryId) {
+  const res = await fetch(`${API}/entries/${entryId}/reactions`, {
+    headers: authHeaders(token),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || "Failed to load reactors");
+  return result;
+}
+
 export async function clearReaction(token, entryId) {
   const res = await fetch(`${API}/entries/${entryId}/reactions`, {
     method: "DELETE",
